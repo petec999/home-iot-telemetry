@@ -1,109 +1,53 @@
-🏡 Home IoT Telemetry – DevOps/SRE Portfolio Project
+# 🏠 Home IoT Telemetry  
+**Heat Pump Analysis • Modbus Telemetry • Home Assistant • ESPHome • InfluxDB • Grafana**
 
-Author: Piotr Czerewko
-Tech stack: Linux • Docker • MQTT • ESPHome • Modbus • ESP32 • InfluxDB • Grafana • Home Assistant • YAML • Jinja • GitHub Actions • IaC • Observability
+This repository collects all configuration, automation and analysis tools used for full telemetry of a Haier heat pump, floor heating, Zamel power meter, and ESP32 Modbus monitoring.  
+It serves as a complete end-to-end system combining **data acquisition**, **signal processing**, **automation**, and **visual analytics**.
 
-🚀 Project Overview
+---
 
-This repository documents my practical work as a DevOps/SRE engineer using a real home automation environment.
-I use my heat pump system (Haier/Kaisai), energy meters, ESP32 devices and Home Assistant as a real-world platform for:
+## 📦 Features
 
-Telemetry ingestion
+### ✔ Real-time telemetry
+- Water IN / Water OUT temperatures  
+- Compressor frequency (FACT Hz)  
+- Outdoor temperature  
+- Internal room temperatures  
+- Flow & ΔT analysis  
+- Zamel Liw-01 electricity meter (power draw)  
+- COP calculation (real energy-based)  
 
-Monitoring & alerting
+### ✔ Automations
+- Defrost event detection  
+- Alerts (HA + mobile notifications)  
+- Heat curve tuning  
+- Flow stability checks  
 
-Data analytics
+### ✔ Visualization & Analysis
+- Grafana dashboards  
+- Custom Home Assistant dashboards  
+- Jupyter notebooks for deep analysis  
+- CSV exports of raw time series  
 
-Edge computing (ESP32/Modbus)
+### ✔ Hardware
+- Haier Heat Pump (PAN + indoor unit)  
+- Zamel Liw-01 energy meter  
+- ESP32 Modbus monitoring node  
+- MQTT, InfluxDB, Grafana stack  
+- Home Assistant integrations  
 
-Infrastructure-as-Code (IaC)
+---
 
-CI/CD automation
+# 📁 Repository Structure
 
-This is a living project — continuously expanding and used as my DevOps portfolio.
-
-📦 Key Features
-🧊 Heat Pump Telemetry
-
-Supply temperature (TWO)
-
-Return temperature (TWI)
-
-Compressor frequency (FACT Hz)
-
-Outdoor temperature
-
-ΔT (TWO – TWI)
-
-Heat output estimation (kW)
-
-COP (instant, daily, seasonal)
-
-Defrost event detection
-
-Modulation stability analysis
-
-⚡ Energy Monitoring
-
-Energy consumption from Zamel LIW-01
-
-Power usage charts
-
-InfluxDB storage
-
-Grafana dashboards
-
-Cost estimation & trends
-
-🔧 Edge Computing (ESP32 + Modbus)
-
-RS485/UART communication
-
-Reading Modbus registers from heat pump
-
-Real-time monitoring (power, flow, internal temps)
-
-Publishing data to HA & InfluxDB
-
-ESPHome-based firmware
-
-🔥 Home Assistant Automations (IoT SRE)
-
-Defrost alarm
-
-Low COP alarm
-
-ΔT instability detector
-
-Missing data alerts
-
-Automations built as IaC (YAML/Jinja)
-
-🐳 DevOps Tooling
-
-Docker Compose stack (Influx, Grafana, MQTT, Proxy)
-
-YAML-based configuration (IaC)
-
-GitHub Actions CI pipeline:
-
-YAML validation
-
-Home Assistant config check
-
-ESPHome config test
-
-Markdown linting
-
-📂 Repository Structure
+```text
 home-iot-telemetry/
-│
 ├── home_assistant/
 │   ├── configuration.yaml
 │   ├── templates/
 │   │   ├── sensor_deltaT.yaml
 │   │   ├── sensor_cop.yaml
-│   │   └── sensor_defrost_detector.yaml
+│   │   ├── sensor_defrost_detector.yaml
 │   ├── automations/
 │   │   └── alert_defrost.yaml
 │   └── dashboards/
@@ -111,17 +55,16 @@ home-iot-telemetry/
 │
 ├── esp32_modbus/
 │   ├── esp32_modbus_monitor.yaml
-│   ├── wiring_diagram.png
-│   └── README.md
+│   └── wiring_diagram.png
 │
-├── ha_sensor_definitions/
-│   ├── haier/
-│   │   ├── twi.yaml
-│   │   ├── two.yaml
-│   │   ├── frequency.yaml
-│   │   └── tao.yaml
-│   └── zamel/
-│       └── electricity_meter.yaml
+├── haier/
+│   ├── twi.yaml
+│   ├── two.yaml
+│   ├── frequency.yaml
+│   └── tao.yaml
+│
+├── zamel/
+│   └── electricity_meter.yaml
 │
 ├── analysis/
 │   ├── graphs/
@@ -129,8 +72,7 @@ home-iot-telemetry/
 │   │   ├── deltaT-stability.png
 │   │   ├── defrosts.png
 │   │   └── cop_vs_temp.png
-│   ├── notebooks/
-│   │   └── deltaT_analysis.ipynb
+│   ├── deltaT_analysis.ipynb
 │   └── raw_exports/
 │       └── history.csv
 │
@@ -141,115 +83,96 @@ home-iot-telemetry/
 │   └── env.sample
 │
 └── README.md
+```
 
-📈 Data Analysis Modules
-🔹 Compressor Modulation Analysis
+---
 
-Tracking FACT Hz over time to detect:
+# 📊 Data Analysis Modules
 
-stable modulation
+### 🔧 Compressor Modulation Analysis  
+Tracking FACT Hz over time allows detecting:
+- stable modulation  
+- micro-cycling  
+- aggressive cycles  
+- defrost events  
+- curve mismatch  
+- flow restrictions  
 
-micro-taktowanie
+### 🧮 COP Calculation  
+COP = Heating Power / Electric Power (Zamel Liw-01)  
+This repository uses a **sensor template** in Home Assistant to calculate real COP based on instantaneous power readings.
 
-overdrive cycles
+---
 
-post-defrost behavior
+# 🧰 ESPHome Modbus Node
 
-🔹 ΔT Stability Analysis
+The ESP32 Modbus monitor provides access to additional registers unavailable via the standard Haier API:
 
-Monitoring hydraulic conditions and flow efficiency.
+- superheat / subcool  
+- internal sensors  
+- valve position  
+- compressor load estimate  
+- detailed defrost state  
 
-🔹 COP Calculation
+ESPHome YAML and wiring diagrams are included.
 
-Instant COP
+---
 
-Daily COP
+# 🔌 Docker Stack
 
-Heating vs outdoor temperature curve
+This repo includes full docker-compose services:
 
-🔹 Defrost Event Detection
+- **MQTT (Mosquitto)**  
+- **InfluxDB 2.x**  
+- **Grafana**  
+- automatic provisioning templates  
+- sample `.env` file  
 
-Built using:
+---
 
-FACT jump → 80 Hz
+# 📈 Dashboards
 
-sudden drop of TWO & TWI
+### Home Assistant Dashboard  
+A complete dashboard for monitoring:
+- temperatures  
+- compressor frequency  
+- defrosts  
+- heating curve  
+- energy usage  
 
-rise in Tao
+### Grafana Dashboard  
+Time-series analysis including:
+- ΔT stability  
+- power draw  
+- COP over time  
+- modulation patterns  
+- seasonal performance  
 
-characteristic ΔT pattern
+---
 
-🔧 ESP32 Modbus Module
+# 🚀 Roadmap
 
-This module will expose:
+- ESPHome UART → more Modbus registers  
+- Automatic defrost classifier (AI model)  
+- Full heating curve auto-optimizer  
+- MQTT → TimescaleDB exporter  
+- Cloud sync (optional)  
 
-Heat pump live electrical power (W)
+---
 
-Flow rate (L/min)
+# 🤝 Contributing
 
-Internal coil temperatures
+Pull requests with:
+- new sensors  
+- dashboards  
+- reverse-engineered registers  
+- analysis notebooks  
 
-Four-way valve status
+…are very welcome.
 
-Defrost mode status
+---
 
-Error codes
+# 📜 License
 
-Firmware: ESPHome
-Transport: UART → RS485 → Modbus RTU
+MIT License – feel free to reuse any parts for your own heat pump / IoT telemetry setup.
 
-🧪 CI/CD – GitHub Actions (Planned)
-
-YAML syntax checker
-
-Home Assistant configuration linter
-
-ESPHome firmware validator (esphome config)
-
-Markdown linter
-
-Automated deployment of Grafana dashboards
-
-🧭 Roadmap
-✔ Phase 1 – Telemetry (in progress)
-
-HA sensors
-
-COP calculation
-
-ΔT logic
-
-CSV-based analytics
-
-⬜ Phase 2 – ESP32 Modbus Integration
-
-Reading HP registers
-
-Power measurement
-
-InfluxDB ingestion
-
-⬜ Phase 3 – Full Grafana Monitoring
-
-Master dashboard
-
-Alerting
-
-⬜ Phase 4 – CI/CD Automation
-
-GitHub Actions
-
-Validation pipeline
-
-⬜ Phase 5 – Predictive COP Model (optional)
-
-ML model for COP prediction based on weather
-
-📬 Notes
-
-This repository grows continuously as I expand my home automation system and use it as a practical playground for DevOps/SRE concepts.
-
-If you’re a recruiter, engineer, or colleague viewing this — welcome!
-This project reflects my approach to observability, automation, and system thinking in the IoT/devops space.
-
-🔥 END OF README 🔥
