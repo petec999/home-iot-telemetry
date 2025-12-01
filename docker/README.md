@@ -1,16 +1,16 @@
-# Docker Infrastructure
+# Docker Stack for Home IoT Telemetry
 
-This directory contains Docker- and Compose-related resources for running the **Home IoT Telemetry** stack.
+This directory contains a complete Docker Compose stack for running
+the core telemetry infrastructure:
 
-It will eventually include:
+### Included services:
+- **Mosquitto (MQTT broker)** – IoT message transport
+- **InfluxDB 2.x** – time-series database for metrics and sensor data
+- **Grafana** – dashboards and visualization
 
-- `docker-compose.yml` for services such as:
-  - MQTT broker  
-  - InfluxDB  
-  - Grafana  
-  - Telegraf (optional)  
-  - Additional telemetry services
-- Environment configuration files
-- Deployment and development instructions
+### Usage
 
-This directory serves as the foundation for the project's Infrastructure-as-Code approach.
+Start the stack:
+
+```bash
+docker compose up -d
