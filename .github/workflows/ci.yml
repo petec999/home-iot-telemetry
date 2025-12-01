@@ -2,9 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - "feature/*"
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   yaml-lint:
@@ -18,12 +21,8 @@ jobs:
         uses: ibiqlik/action-yamllint@v3
         with:
           config_file: .yamllint.yml
-          file_or_dir: |
-            .
-            home_assistant
-            zamel
-            haier
-            graphs
+          file_or_dir: .
+          strict: true
 
   markdown-lint:
     name: Markdown lint
@@ -37,4 +36,3 @@ jobs:
         with:
           globs: |
             **/*.md
-
