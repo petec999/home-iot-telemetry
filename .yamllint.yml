@@ -1,0 +1,18 @@
+extends: default
+
+rules:
+  line-length:
+    max: 120
+    level: warning
+
+  # Home Assistant / IoT YAML często używa "on", "off" itd.
+  truthy: disable
+
+  # Często przeszkadza przy wcięciach komentarzy w HA
+  comments-indentation: disable
+
+ignore: |
+  .git/
+  .github/
+  analysis/graphs/
+  analysis/raw_exports/
