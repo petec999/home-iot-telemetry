@@ -113,9 +113,6 @@ def new_diagnostics(views):
         one(circuit,"history-graph","Obliczone różnice temperatur · °C (24 h)"),
         one(circuit,"history-graph","Różnica ciśnień czynnika · MPa (24 h)"),
     ]
-    for card,name in zip(selection,NEW_TITLES):
-        # Cards are retitled explicitly below, never rely on set iteration order.
-        pass
     renamed=[
         "Cykle i defrost · HaierPi 1.4.5_1",
         "Dane cykli i defrostów (RAM)",
@@ -144,10 +141,6 @@ def new_diagnostics(views):
         "sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta",
         "sensor.haierpi_advanced_diagnostics_compressor_frequency_deviation",
     }
-    allids=set()
-    for c in selection:
-        allids.update(identifiers(c))
-        allids.update(str(c.get("content","")).split())
     missing=[k for k in required if not any(k in json.dumps(c) for c in selection)]
     if missing: raise RuntimeError("Missing diagnostic entities: "+str(missing))
     return selection
@@ -200,13 +193,11 @@ def transform(config, release_views):
 
     new_cards=new_diagnostics(release_views)
     original=[]
-    moved_room=False
     for item in pump["cards"]:
         if item.get("title") in NEW_TITLES:
             continue # idempotent rerun
         if str(item.get("title","")).strip().casefold()=="temperatura dom":
             # All three original sensors are displayed in Klimatyzacja instead.
-            moved_room=True
             continue
         filtered=remove_broken_cop(item)
         if filtered is not None: original.append(filtered)
