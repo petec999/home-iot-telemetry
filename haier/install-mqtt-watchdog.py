@@ -152,13 +152,18 @@ def patch(source):
         return source
     anchor = "def mqtt_snapshot_tick():\n"
     snapshot = "    _mqtt_snapshot_last_ts = now\n    mqtt_publish_snapshot()\n"
-    handler = "def on_message(client, userdata, msg):  # The callback for when a PUBLISH\n"
-    for item in (anchor, snapshot, handler):
+    import re
+    handler_pattern = r"(?m)^def on_message\(client,[ \t]*userdata,[ \t]*msg\):[ \t]*(?:#[^\n]*)?\n"
+    handlers = list(re.finditer(handler_pattern, source))
+    if len(handlers) != 1:
+        raise RuntimeError("Expected exactly one on_message(client, userdata, msg); nothing changed")
+    for item in (anchor, snapshot):
         if source.count(item) != 1:
             raise RuntimeError("Unexpected HaierPi source layout; nothing changed: " + item.strip())
+    # Keep the original signature and comment, including trailing whitespace.
+    handler = handlers[0].group(0)
     source = source.replace(anchor, WATCHDOG + "\n" + anchor, 1)
     source = source.replace(snapshot, snapshot + "    _haierpi_watchdog_tick()\n", 1)
-    # Ignore our own heartbeat on the existing wildcard subscription.
     source = source.replace(handler, handler +
         '    if msg.topic == str(mqtt_topic) + "/haierpi/watchdog_heartbeat":\n'
         '        return\n', 1)
