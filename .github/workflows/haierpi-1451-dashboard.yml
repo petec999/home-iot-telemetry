@@ -1,0 +1,36 @@
+name: Validate HaierPi 1.4.5_1 dashboard compatibility
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'home_assistant/dashboards/*.yaml'
+      - 'tests/check_haierpi_1451_dashboard.py'
+      - '.github/workflows/haierpi-1451-dashboard.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'home_assistant/dashboards/*.yaml'
+      - 'tests/check_haierpi_1451_dashboard.py'
+      - '.github/workflows/haierpi-1451-dashboard.yml'
+  workflow_dispatch:
+
+jobs:
+  dashboard-entities:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Home Assistant dashboard
+        uses: actions/checkout@v4
+      - name: Checkout pinned hpi release
+        uses: actions/checkout@v4
+        with:
+          repository: petec999/hpi
+          ref: v1.4.5_1
+          path: hpi-release
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install YAML parser
+        run: python -m pip install 'PyYAML>=6,<7'
+      - name: Verify dashboard schemas and all source metrics
+        run: python tests/check_haierpi_1451_dashboard.py hpi-release
