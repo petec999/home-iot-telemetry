@@ -1,0 +1,136 @@
+# HaierPi read-only technical diagnostics view — Home Assistant built-in cards only.
+# Add as a NEW VIEW in an existing YAML dashboard (not as full dashboard config).
+title: Diagnostyka techniczna
+path: haier-diagnostyka
+icon: mdi:heat-pump
+cards:
+  - type: markdown
+    title: HaierPi · stan i praca urządzenia
+    content: >-
+      **Diagnostyka PR6 + PR7** · wszystkie wartości pochodzą z MQTT.
+
+      {% set comp = states('sensor.haierpi_diagnostics_compressor_run_today') | float(0) %}
+      {% set frost = states('sensor.haierpi_diagnostics_defrost_run_today') | float(0) %}
+      {% set last_comp = states('sensor.haierpi_diagnostics_last_compressor_cycle') | float(0) %}
+      {% set last_frost = states('sensor.haierpi_diagnostics_last_defrost_cycle') | float(0) %}
+
+      **Sprężarka:** {{ (comp / 3600) | round(2) }} h dzisiaj,
+      {{ states('sensor.haierpi_diagnostics_compressor_starts_today') }} uruchomień.
+
+      **Odszranianie:** {{ (frost / 60) | round(1) }} min dzisiaj,
+      {{ states('sensor.haierpi_diagnostics_defrost_starts_today') }} rozpoczęć.
+
+      **Ostatni cykl sprężarki:** {{ (last_comp / 60) | round(1) }} min.
+
+      **Ostatni defrost:** {{ last_frost | round(0) }} s.
+
+      {% if not is_number(states('sensor.haierpi_diagnostics_compressor_run_today')) %}
+      ⚠️ Brak aktualnych danych licznika sprężarki.
+      {% endif %}
+
+      _PR6 liczy czas w sekundach; po ponownym uruchomieniu historyczne
+      dane są wczytywane z pliku licznika._
+
+  - type: entities
+    title: PR6 · sprężarka
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_diagnostics_compressor_starts_today
+        name: Uruchomienia dzisiaj
+      - entity: sensor.haierpi_diagnostics_compressor_run_today
+        name: Łączny czas pracy dzisiaj (s)
+      - entity: sensor.haierpi_diagnostics_completed_compressor_cycles_today
+        name: Zakończone cykle dzisiaj
+      - entity: sensor.haierpi_diagnostics_last_compressor_cycle
+        name: Ostatni cykl (s)
+      - entity: sensor.haierpi_compressor_fact
+        name: Sprężarka · rzeczywista częstotliwość
+      - entity: sensor.haierpi_compressor_fset
+        name: Sprężarka · zadana częstotliwość
+
+  - type: entities
+    title: PR6 · odszranianie
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_diagnostics_defrost_starts_today
+        name: Rozpoczęte defrosty dzisiaj
+      - entity: sensor.haierpi_diagnostics_defrost_run_today
+        name: Czas defrostu dzisiaj (s)
+      - entity: sensor.haierpi_diagnostics_completed_defrost_cycles_today
+        name: Zakończone defrosty dzisiaj
+      - entity: sensor.haierpi_diagnostics_last_defrost_cycle
+        name: Ostatni defrost (s)
+      - entity: sensor.haierpi_tdef
+        name: Temperatura Tdef
+
+  - type: entities
+    title: PR7 · obieg chłodniczy i hydrauliczny
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
+        name: Różnica temperatur wody CO
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
+        name: Różnica temperatur nasycenia czynnika
+      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
+        name: Różnica temperatur powietrza i parowania
+      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
+        name: Różnica temperatur tłoczenia i skraplania
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
+        name: Różnica ciśnień czynnika (MPa)
+      - entity: sensor.haierpi_advanced_diagnostics_compressor_frequency_deviation
+        name: Odchylenie częstotliwości sprężarki (Hz)
+
+  - type: history-graph
+    title: PR7 · temperatury (ostatnie 24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
+        name: CO ΔT
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
+        name: Lift
+      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
+        name: Powietrze–parowanie
+      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
+        name: Tłoczenie–skraplanie
+
+  - type: history-graph
+    title: PR7 · ciśnienie (ostatnie 24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
+        name: Różnica ciśnień (MPa)
+
+  - type: history-graph
+    title: Sprężarka · częstotliwość (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_compressor_fact
+        name: Rzeczywista częstotliwość
+      - entity: sensor.haierpi_compressor_fset
+        name: Zadana częstotliwość
+
+  - type: history-graph
+    title: PR6 · liczniki defrostów i startów (48 h)
+    hours_to_show: 48
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_diagnostics_defrost_starts_today
+        name: Defrosty dzisiaj
+      - entity: sensor.haierpi_diagnostics_compressor_starts_today
+        name: Starty sprężarki dzisiaj
+
+  - type: markdown
+    title: PR8 · historia SQLite
+    content: >-
+      PR8 przechowuje próbki i zdarzenia na HaierPi w
+      `/var/lib/haierpi/history.sqlite`. Nie tworzy osobnych encji HA.
+
+      **Raport i eksport CSV:** uruchom `python3 tools/pr8_report.py`
+      na kopii repozytorium zawierającej ten plik (albo pobierz sam
+      `tools/pr8_report.py` na komputer administracyjny).
+      Wykonywany jest tylko odczyt bazy, bez ingerencji w sterowanie.
+
+      _Wykresy powyżej wykorzystują historię Home Assistant, a nie bazę PR8._
