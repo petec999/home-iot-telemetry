@@ -10,7 +10,7 @@ cards:
       {% set f = states('sensor.haierpi_compressor_fact') %}
       {% set t = states('sensor.haierpi_tao') %}
       {% set cop = states('sensor.haier_bilans_cop_dobowy') %}
-      **Sterownik:** HaierPi · wydanie diagnostyczne 1.4.5_1
+      **Panel diagnostyczny 1.4.5_1** (działa również z wcześniej poprawionym Alpha13; nie potwierdza wersji głównego sterownika)
 
       **Sprężarka:** {% if is_number(f) %}{{ 'pracuje' if (f | float) >= 1 else 'zatrzymana' }} ({{ f }} Hz){% else %}brak aktualnego pomiaru{% endif %}
 
