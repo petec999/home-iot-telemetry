@@ -96,7 +96,10 @@ def clean(card, managed, climate):
         card["entities"] = [r for r in old if row_entity(r) not in managed]
         if old and not card["entities"]:
             return None
-    if kind == "history-graph" and used and used <= (managed | {climate}):
+    if kind == "history-graph" and used and used <= (managed | {climate}) and (
+        str(card.get("title", "")).startswith("Klimatyzacja – temperatura pomieszczenia")
+        or used == {ROOM}
+    ):
         return None
     if kind in ("grid", "vertical-stack", "horizontal-stack") and isinstance(card.get("cards"), list):
         old = card["cards"]
