@@ -49,6 +49,22 @@ class DashboardTests(unittest.TestCase):
         self.assertTrue(any(c.get("title") == "Custom history" for c in cards))
         self.assertEqual(sum("switch.custom_turbo" in panel.refs(c) for c in cards), 1)
 
+    def test_unsupported_and_disabled_switch_rows_removed(self):
+        config, registry, states = self.fixture()
+        cards = config["views"][1]["sections"][0]["cards"]
+        cards.append({"type": "entities", "title": "Sterowanie", "entities": [
+            "climate.example_renamed", "switch.custom_eco", "switch.custom_display_on",
+            "switch.custom_sleep", "switch.foreign_eco"]})
+        result = panel.transform(config, registry, states)
+        view = result["views"][1]
+        refs = panel.refs(view)
+        self.assertNotIn("switch.custom_eco", refs)
+        self.assertNotIn("switch.custom_display_on", refs)
+        self.assertIn("switch.custom_sleep", refs)
+        self.assertIn("switch.custom_turbo", refs)
+        self.assertIn("switch.foreign_eco", refs)
+        self.assertEqual(result, panel.transform(result, registry, states))
+
     def test_idempotent(self):
         config, registry, states = self.fixture()
         first = panel.transform(config, registry, states)
