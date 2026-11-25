@@ -1,68 +1,59 @@
 # Home Assistant · HaierPi 1.4.5_1
 
-The owner already has a working Home Assistant panel. **The recommended deployment
-adds four new diagnostics tabs to the EXISTING/default dashboard**, without
-creating a separate dashboard and without deleting any existing cards.
+## Aktualny sposób wdrożenia — bez dodatkowych zakładek
 
-## One command in Home Assistant Terminal & SSH
+Zgodnie z rzeczywistym układem pulpitu `Dom`, użytkownik chce wszystkie
+funkcje HaierPi **wewnątrz istniejącego widoku „Pompa ciepła”**, a czujnik
+temperatury w domu — w widoku **„Klimatyzacja”**.
+
+W dodatku **Terminal & SSH Home Assistant** (nie na NanoPi `root@HaierPi`)
+uruchom jedną komendę:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/add-haierpi-views.py | python3 -
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/merge-haierpi-panel.py | python3 -
 ```
 
-Requirements: run this **on the Home Assistant machine in Terminal/SSH add-on**,
-not on NanoPi `HaierPi`. The add-on should have the Home Assistant API permission
-(`SUPERVISOR_TOKEN`). A direct connection using a private `HA_TOKEN` is supported
-for advanced users who cannot expose the Supervisor proxy. Do **not** paste tokens
-into chat, GitHub, or a dashboard.
+Skrypt najpierw zapisuje pełną kopię poprzedniego pulpitu w
+`/config/haierpi-lovelace-backups/`, a następnie modyfikuje konfigurację
+przez oficjalne WebSocket API Lovelace. Nie zmienia bezpośrednio `.storage`,
+`configuration.yaml` ani żadnej usługi NanoPi.
 
-The script uses the official `lovelace/config` and `lovelace/config/save`
-WebSocket APIs rather than writing `.storage` or changing
-`configuration.yaml`. It downloads JSON generated from our checked-in YAML
-on GitHub, verifies the named tabs and key real HA entities, then:
+Działania:
+- zachowanie zakładki **Pompa ciepła** ze sterowaniem, bilansem, pomiarami,
+  wykresami oraz unikatowymi źródłowymi czujnikami;
+- wstawienie **8 liczników cykli/defrostów i 6 pochodnych parametrów obiegu**,
+  z wykresami i pomocniczą oceną dostępności;
+- usunięcie starego wskaźnika `sensor.haier_cop_chwilowy` (obecnie
+  `unavailable`) i jego trzech pustych wykresów; zachowanie działającego
+  `sensor.haier_bilans_cop_dobowy` oraz obliczeń COP w pozostałych kartach;
+- usunięcie wielokrotnie pokazywanych w tabelach tych samych encji. Wykresy
+  mogą celowo powtarzać encje użyte w bieżącym odczycie;
+- przeniesienie osobnej karty „temperatura dom” do **Klimatyzacja**: Zigbee
+  temperatura, wilgotność i oświetlenie. Temperatura trafia także na
+  istniejący 48-godzinny wykres klimatyzacji;
+- usunięcie wyłącznie czterech tymczasowych zakładek
+  `haierpi-przeglad`, `haierpi-cykle`, `haierpi-obieg`,
+  `haierpi-bilans`. Pozostałe zakładki (Fotowoltaika, CWU, kamery,
+  światła/rolety itd.) są zachowane.
 
-1. Fetches the existing/default dashboard.
-2. Appends/updates only the four namespaced HaierPi tabs:
-   `haierpi-przeglad`, `haierpi-cykle`, `haierpi-obieg`, `haierpi-bilans`.
-3. Saves a full backup of the **old dashboard** under
-   `/config/haierpi-lovelace-backups/` before updating.
-4. Saves via the HA WebSocket API, rereads and verifies the result.
+Instalator nie wymaga restartu Home Assistant. Jest idempotentny i w razie
+braku uprawnień lub nieoczekiwanej struktury pulpitu przerywa działanie zamiast
+nadpisywać konfigurację. Dla terminala HA wymagane są uprawnienia API
+(SUPERVISOR_TOKEN). Użycie na NanoPi nie wprowadza zmian.
 
-Other views and their cards are preserved. Re-running is idempotent; no restart
-of Home Assistant or NanoPi is needed. If the current dashboard is YAML-managed
-or auto-generated, or permissions are insufficient, the script refuses to
-change it and prints a reason. A verified backup can be restored using the same
-official WebSocket API, not by editing `.storage` while HA runs.
+Sprawdzenie: GitHub Actions uruchamia test migracji na sztucznym, anonimowym
+pulpicie oraz test zgodności wszystkich 14 encji z wydaniem
+[`petec999/hpi v1.4.5_1`](https://github.com/petec999/hpi/releases/tag/v1.4.5_1).
 
-## What the new tabs display
+## Wcześniejsza instalacja i pliki źródłowe
 
-- **Przegląd:** status, compressor fact/fset, temperature, daily COP (if defined)
-  and availability checks.
-- **Cykle i defrost:** eight RAM-only MQTT counters from
-  `haierpi-cycles.service`, defrost context and graphs.
-- **Obieg chłodniczy:** six calculated read-only metrics from
-  `haierpi-circuit.service`; live Twi/Two, Td, Ts, TsatPs/TSatPd, pressures
-  and Superheat/Subcooling.
-- **Bilans energii:** existing independent Home Assistant energy and COP
-  templates. The unavailable instantaneous COP is intentionally omitted.
+Dawna komenda `add-haierpi-views.py` dodaje cztery **oddzielne zakładki**,
+więc nie należy jej ponownie uruchamiać po konsolidacji. Pozostaje w historii
+repozytorium na potrzeby odtwarzania, ale obecnie zalecana jest powyższa
+`merge-haierpi-panel.py`.
 
-These entities were confirmed on the owner's actual HA installation on
-25 November 2026. The 14 bridge entity IDs are additionally checked in CI
-against `petec999/hpi` tag `v1.4.5_1`. Compatibility IDs in MQTT retain
-their old prefixes to avoid duplicates; display names are descriptive.
+Źródła wszystkich kart to:
+- `dashboards/haierpi-centrum-1.4.5_1.yaml`
+- `dashboards/haierpi-centrum-1.4.5_1.json`
+- `dashboards/haier-diagnostyka-view.yaml`
 
-The dashboard files remain available for manual import or YAML-managed HA:
-
-- `dashboards/haierpi-centrum-1.4.5_1.yaml`: full independent
-  four-tab dashboard template, **not the preferred terminal method**.
-- `dashboards/haier-diagnostyka-view.yaml`: one view for manual insertion.
-- `dashboards/haierpi-centrum-1.4.5_1.json`: generated JSON used
-  automatically by the terminal installer.
-
-The label 1.4.5_1 denotes the dashboard/add-on distribution, **not confirmation
-that the original running NanoPi core has been upgraded to upstream Stable**.
-
-All dashboard functionality is read-only and does not transmit control
-commands, change existing heating automations, or store diagnostics on the
-NanoPi SD card. Counters in NanoPi RAM reset on its reboot; Home Assistant
-Recorder provides long-term history.
