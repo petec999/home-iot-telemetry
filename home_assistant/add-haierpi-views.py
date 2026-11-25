@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append/refresh FOUR HaierPi views on an EXISTING default Home Assistant dashboard.
+"""Merge HaierPi diagnostics into the existing Pompa ciepła view.
 
 Uses the official Lovelace WebSocket API. Does NOT edit .storage files or
 configuration.yaml, and does NOT add a second dashboard or restart HA.
@@ -19,6 +19,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import unicodedata
 import socket
 import struct
 import sys
@@ -179,6 +180,64 @@ def save_backup(current):
     os.chmod(path,0o600)
     return path
 
+def norm(value):
+    return "".join(c for c in unicodedata.normalize("NFKD", str(value).lower()) if not unicodedata.combining(c)).replace("ł", "l").replace("-", " ").replace("_", " ").strip()
+
+def entity_ids(obj):
+    if isinstance(obj, dict):
+        return ({obj["entity"]} if isinstance(obj.get("entity"), str) else set()) | set().union(*(entity_ids(v) for v in obj.values()))
+    if isinstance(obj, list):
+        return set().union(*(entity_ids(v) if not isinstance(v, str) else {v} if "." in v else set() for v in obj))
+    return set()
+
+def cards_of(view):
+    return view.get("cards", []) + [c for section in view.get("sections", []) for c in section.get("cards", [])]
+
+def merge_views(config, views):
+    result=json.loads(json.dumps(config))
+    candidates=[v for v in result["views"] if norm(v.get("title",""))=="pompa ciepla" or norm(v.get("path",""))=="pompa ciepla"]
+    if len(candidates)!=1:
+        raise RuntimeError("Expected exactly one existing Pompa ciepła view; found "+str(len(candidates)))
+    target=candidates[0]
+    # Keep user cards; rebuild only our explicitly marked diagnostic section/cards.
+    marker="HaierPi · diagnostyka"
+    if target.get("type")=="sections":
+        target["sections"]=[s for s in target.get("sections",[]) if not any(c.get("heading")==marker for c in s.get("cards",[]))]
+    else:
+        target["cards"]=[c for c in target.get("cards",[]) if not (c.get("type")=="vertical-stack" and c.get("title")==marker)]
+    existing=entity_ids(cards_of(target))
+    added=[]
+    for view in views:
+        for card in view.get("cards",[]):
+            if card.get("type")!="entities":
+                continue
+            rows=[]
+            for row in card.get("entities",[]):
+                eid=row if isinstance(row,str) else row.get("entity")
+                if eid and eid not in existing:
+                    rows.append(row)
+                    existing.add(eid)
+            if rows:
+                added.append(dict(card,entities=rows))
+    if added:
+        if target.get("type")=="sections":
+            target.setdefault("sections",[]).append({"type":"grid","cards":[{"type":"heading","heading":marker}]+added})
+        else:
+            target.setdefault("cards",[]).append({"type":"vertical-stack","title":marker,"cards":added})
+    climate=[v for v in result["views"] if norm(v.get("title","")) in ("klima","klimatyzacja") or norm(v.get("path","")) in ("klima","klimatyzacja")]
+    if len(climate)!=1:
+        raise RuntimeError("Expected exactly one Klima/Klimatyzacja view; found "+str(len(climate)))
+    cv=climate[0]
+    eid="sensor.haierpi_inside_temperature"
+    if eid not in entity_ids(cards_of(cv)):
+        card={"type":"entity","entity":eid,"name":"Temperatura w domu"}
+        if cv.get("type")=="sections":
+            cv.setdefault("sections",[]).append({"type":"grid","cards":[card]})
+        else:
+            cv.setdefault("cards",[]).append(card)
+    result["views"]=[v for v in result["views"] if v.get("path") not in VIEW_PATHS]
+    return result
+
 def main():
     views=get_release_views()
     token=os.environ.get("SUPERVISOR_TOKEN")
@@ -216,24 +275,9 @@ def main():
         for v in original_views:
             if not isinstance(v,dict):
                 raise RuntimeError("Unexpected existing dashboard view")
-        result=json.loads(json.dumps(base))
-        count_added=count_replaced=0
-        for new_view in views:
-            idx=[i for i,existing in enumerate(result["views"])
-                 if existing.get("path")==new_view["path"]]
-            if len(idx)>1:
-                raise RuntimeError("Duplicate existing view path: "+new_view["path"])
-            if idx:
-                old=result["views"][idx[0]]
-                if old!=new_view:
-                    # Only our namespaced paths; preserve ALL other cards/views.
-                    result["views"][idx[0]]=new_view
-                    count_replaced+=1
-            else:
-                result["views"].append(new_view)
-                count_added+=1
+        result=merge_views(base,views)
         if result==config:
-            print("Already current: 4 HaierPi tabs present; nothing changed.")
+            print("Already current; nothing changed.")
             return
         # Detect another UI edit before overwriting the dashboard via its public API.
         check=ws.call("lovelace/config",force=True)
@@ -246,8 +290,8 @@ def main():
         if verify!=result:
             raise RuntimeError(
                 "Save result differs on reread; backup saved at "+str(backup))
-        print(f"SUCCESS: appended {count_added}, updated {count_replaced} HaierPi views.")
-        print("Existing views, cards, automations and core services were untouched.")
+        print("SUCCESS: merged diagnostics into Pompa ciepła, updated Klima and removed four obsolete tabs.")
+        print("Other views, automations and core services were untouched.")
         print("Refresh your existing Overview dashboard in browser.")
     finally:
         ws.close()
