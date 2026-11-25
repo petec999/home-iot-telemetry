@@ -1,178 +1,44 @@
-# 🏠 Home IoT Telemetry  
-**Heat Pump Analysis • Modbus Telemetry • Home Assistant • ESPHome • InfluxDB • Grafana**
+# Home IoT Telemetry
 
-This repository collects all configuration, automation and analysis tools used for full telemetry of a Haier heat pump, floor heating, Zamel power meter, and ESP32 Modbus monitoring.  
-It serves as a complete end-to-end system combining **data acquisition**, **signal processing**, **automation**, and **visual analytics**.
+Home Assistant dashboard integration and telemetry for Haier heat pumps, including compressor operation, defrost diagnostics, refrigerant circuit and energy balance.
 
----
+## Current dashboard
 
-## 📦 Features
+The HaierPi 1.4.5_1 diagnostic migration integrates 14 diagnostic sensors into the existing **Pompa ciepła** tab, removes the obsolete instantaneous COP card and temporary diagnostic tabs, and displays room temperature, humidity and illuminance in **Klimatyzacja**. Existing unrelated dashboard views and automations are preserved.
 
-### ✔ Real-time telemetry
-- Water IN / Water OUT temperatures  
-- Compressor frequency (FACT Hz)  
-- Outdoor temperature  
-- Internal room temperatures  
-- Flow & ΔT analysis  
-- Zamel Liw-01 electricity meter (power draw)  
-- COP calculation (real energy-based)  
+### Install / update
 
-### ✔ Automations
-- Defrost event detection  
-- Alerts (HA + mobile notifications)  
-- Heat curve tuning  
-- Flow stability checks  
+From Home Assistant Terminal & SSH with Home Assistant API access:
 
-### ✔ Visualization & Analysis
-- Grafana dashboards  
-- Custom Home Assistant dashboards  
-- Jupyter notebooks for deep analysis  
-- CSV exports of raw time series  
-
-### ✔ Hardware
-- Haier Heat Pump (PAN + indoor unit)  
-- Zamel Liw-01 energy meter  
-- ESP32 Modbus monitoring node  
-- MQTT, InfluxDB, Grafana stack  
-- Home Assistant integrations  
-
----
-
-# 📁 Repository Structure
-
-```text
-home-iot-telemetry/
-├── home_assistant/
-│   ├── configuration.yaml
-│   ├── templates/
-│   │   ├── sensor_deltaT.yaml
-│   │   ├── sensor_cop.yaml
-│   │   ├── sensor_defrost_detector.yaml
-│   ├── automations/
-│   │   └── alert_defrost.yaml
-│   └── dashboards/
-│       └── heat_pump_dashboard.yaml
-│
-├── esp32_modbus/
-│   ├── esp32_modbus_monitor.yaml
-│   └── wiring_diagram.png
-│
-├── haier/
-│   ├── twi.yaml
-│   ├── two.yaml
-│   ├── frequency.yaml
-│   └── tao.yaml
-│
-├── zamel/
-│   └── electricity_meter.yaml
-│
-├── analysis/
-│   ├── graphs/
-│   │   ├── modulation-pattern.png
-│   │   ├── deltaT-stability.png
-│   │   ├── defrosts.png
-│   │   └── cop_vs_temp.png
-│   ├── deltaT_analysis.ipynb
-│   └── raw_exports/
-│       └── history.csv
-│
-├── docker/
-│   ├── docker-compose.influx.yml
-│   ├── docker-compose.grafana.yml
-│   ├── docker-compose.mqtt.yml
-│   └── env.sample
-│
-└── README.md
+```bash
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/merge-haierpi-panel.py | python3 -
 ```
 
----
+The legacy `add-haierpi-views.py` entrypoint delegates to the same merger. The merger requires Python 3, network access, a UI-managed default Lovelace dashboard, and the expected existing heat pump and climate tabs. It uses Supervisor authentication or a locally supplied `HA_TOKEN`; never publish tokens. No HA restart is required.
 
-# 📊 Data Analysis Modules
+The script backs up the complete dashboard under `/config/haierpi-lovelace-backups/` before saving, checks for concurrent edits and verifies the saved configuration. Restore the backup using the dashboard raw configuration editor (JSON is valid YAML), if needed. This changes dashboard presentation, not sensor definitions or equipment controls.
 
-### 🔧 Compressor Modulation Analysis  
-Tracking FACT Hz over time allows detecting:
-- stable modulation  
-- micro-cycling  
-- aggressive cycles  
-- defrost events  
-- curve mismatch  
-- flow restrictions  
+## Files
 
-### 🧮 COP Calculation  
-COP = Heating Power / Electric Power (Zamel Liw-01)  
-This repository uses a **sensor template** in Home Assistant to calculate real COP based on instantaneous power readings.
+- [Dashboard migration](home_assistant/merge-haierpi-panel.py)
+- [Versioned dashboard source](home_assistant/dashboards/haierpi-centrum-1.4.5_1.json)
+- [Regression tests](tests/test_merge_haierpi_panel.py)
 
----
+Run tests locally from the repository root:
 
-# 🧰 ESPHome Modbus Node
+```bash
+python3 -m unittest discover -s tests -v
+```
 
-The ESP32 Modbus monitor provides access to additional registers unavailable via the standard Haier API:
+The tests use synthetic dashboards, not private household configuration.
 
-- superheat / subcool  
-- internal sensors  
-- valve position  
-- compressor load estimate  
-- detailed defrost state  
+## Related projects
 
-ESPHome YAML and wiring diagrams are included.
+- [HaierPi](https://github.com/petec999/hpi) — related heat pump software.
+- [Midea Cloud Control](https://github.com/petec999/midea-cloud-control) — Home Assistant integration for cloud-controlled air conditioners.
 
----
+## Scope and roadmap
 
-# 🔌 Docker Stack
+The current focus is reliable telemetry and dashboard diagnostics. Further work may include historical energy analysis, Grafana visualization, and additional Modbus monitoring. These are not guaranteed to be implemented in this repository.
 
-This repo includes full docker-compose services:
-
-- **MQTT (Mosquitto)**  
-- **InfluxDB 2.x**  
-- **Grafana**  
-- automatic provisioning templates  
-- sample `.env` file  
-
----
-
-# 📈 Dashboards
-
-### Home Assistant Dashboard  
-A complete dashboard for monitoring:
-- temperatures  
-- compressor frequency  
-- defrosts  
-- heating curve  
-- energy usage  
-
-### Grafana Dashboard  
-Time-series analysis including:
-- ΔT stability  
-- power draw  
-- COP over time  
-- modulation patterns  
-- seasonal performance  
-
----
-
-# 🚀 Roadmap
-
-- ESPHome UART → more Modbus registers  
-- Automatic defrost classifier (AI model)  
-- Full heating curve auto-optimizer  
-- MQTT → TimescaleDB exporter  
-- Cloud sync (optional)  
-
----
-
-# 🤝 Contributing
-
-Pull requests with:
-- new sensors  
-- dashboards  
-- reverse-engineered registers  
-- analysis notebooks  
-
-…are very welcome.
-
----
-
-# 📜 License
-
-MIT License – feel free to reuse any parts for your own heat pump / IoT telemetry setup.
-
+Do not commit Home Assistant tokens, credentials, private dashboard exports or household telemetry. Follow upstream licensing for any third-party code.
