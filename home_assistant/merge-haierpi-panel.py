@@ -2,7 +2,7 @@
 """Merge HaierPi 1.4.5_1 diagnostics into EXISTING 'Pompa ciepła' dashboard tab.
 
 Clean redundant read-only cards, remove the unavailable COP tile/graphs,
-append all 14 diagnostics from our GitHub release, move the home Zigbee sensor
+append all 14 diagnostics from our GitHub release, move the home temperature sensor
 card into Klimatyzacja, and retire the four temporary HaierPi-only tabs.
 
 Uses the *official HA Lovelace WebSocket API*, full backup before save;
@@ -29,11 +29,11 @@ EXTRA_PATHS = {"haierpi-przeglad","haierpi-cykle","haierpi-obieg","haierpi-bilan
 COP_MISSING = "sensor.haier_cop_chwilowy"
 ROOM = "sensor.temperature_and_humidity_sensor_5_temperatura"
 ROOM_ENTITIES = [
-    {"entity": ROOM, "name": "Temperatura w domu (Zigbee)"},
+    {"entity": ROOM, "name": "Temperatura w domu"},
     {"entity": "sensor.temperature_and_humidity_sensor_5_wilgotnosc",
-     "name": "Wilgotność w domu (Zigbee)"},
+     "name": "Wilgotność w domu"},
     {"entity": "sensor.temperature_and_humidity_sensor_5_natezenie_oswietlenia",
-     "name": "Natężenie światła w domu (Zigbee)"},
+     "name": "Natężenie światła w domu"},
 ]
 NEW_TITLES = {
     "Cykle i defrost · HaierPi 1.4.5_1",
@@ -215,10 +215,10 @@ def transform(config, release_views):
     if not isinstance(climate_cards,list):
         raise RuntimeError("Klimatyzacja section layout unknown")
     climate_cards[:]=[card for card in climate_cards
-                      if card.get("title")!="Warunki w domu · Zigbee"]
+                      if card.get("title")!="Warunki w domu"]
     conditions={
         "type":"entities",
-        "title":"Warunki w domu · Zigbee",
+        "title":"Warunki w domu",
         "show_header_toggle":False,
         "entities":copy.deepcopy(ROOM_ENTITIES),
     }
@@ -231,7 +231,7 @@ def transform(config, release_views):
     if graph is not None:
         graph.setdefault("entities",[])
         if ROOM not in [entity_in(row) for row in graph["entities"]]:
-            graph["entities"].append({"entity":ROOM,"name":"Temperatura w domu (Zigbee)"})
+            graph["entities"].append({"entity":ROOM,"name":"Temperatura w domu"})
 
     # Remove ONLY four temporary diagnostics tabs, never unrelated user views.
     output["views"]=[v for v in output["views"] if v.get("path") not in EXTRA_PATHS]
@@ -277,7 +277,7 @@ def main():
             raise RuntimeError("Save verification failed; backup is "+str(backup))
         print("SUCCESS: Pompa ciepła now contains all 14 diagnostic sensors.")
         print("SUCCESS: removed the old unavailable COP card and redundant data rows.")
-        print("SUCCESS: Klimatyzacja includes home Zigbee temperature, humidity and its graph.")
+        print("SUCCESS: Klimatyzacja includes home temperature, humidity and its graph.")
         print("SUCCESS: retired 4 temporary diagnostic-only tabs.")
         print("Other views, controls, automations and NanoPi are unchanged. Refresh HA.")
     finally:
