@@ -70,7 +70,9 @@ curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/ho
 Instalator wyszukuje istniejący klimatyzator w widoku `klimatyzacja` i dopasowuje
 nowe encje na podstawie rejestru urządzeń i unikalnych identyfikatorów. Nie
 dodaje innych urządzeń z konta. Pomija wyłączone lub nieobecne encje.
-Dodaje sterowanie ECO, Turbo, Sleep i LED, dwa sensory temperatury, warunki
+Dla Jaśminowej pokazuje tylko potwierdzone przełączniki Turbo i Sleep; usuwa
+ECO i LED z pulpitu (brak obsługi przez aplikację producenta), również gdy
+encje pozostają w rejestrze HA. Dodaje dwa sensory temperatury, warunki
 w domu, wykres 24 h oraz diagnostykę filtra i błędów. Zachowuje istniejący
 termostat i pozostałe widoki. Nie wysyła komend do klimatyzatora ani pompy ciepła.
 
