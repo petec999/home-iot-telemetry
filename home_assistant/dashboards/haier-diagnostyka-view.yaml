@@ -7,7 +7,7 @@ cards:
   - type: markdown
     title: HaierPi · stan i praca urządzenia
     content: >-
-      **Diagnostyka PR6 + PR7** · wszystkie wartości pochodzą z MQTT.
+      **Diagnostyka sprężarki i obiegu chłodniczego** · wszystkie wartości pochodzą z MQTT.
 
       {% set comp = states('sensor.haierpi_diagnostics_compressor_run_today') | float(0) %}
       {% set frost = states('sensor.haierpi_diagnostics_defrost_run_today') | float(0) %}
@@ -28,11 +28,10 @@ cards:
       ⚠️ Brak aktualnych danych licznika sprężarki.
       {% endif %}
 
-      _PR6 liczy czas w sekundach; po ponownym uruchomieniu historyczne
-      dane są wczytywane z pliku licznika._
+      _Liczniki działają w RAM — po restarcie usługi dzienne sumy zaczynają się od zera. Długoterminowe wykresy przechowuje Home Assistant._
 
   - type: entities
-    title: PR6 · sprężarka
+    title: Cykle · sprężarka
     show_header_toggle: false
     entities:
       - entity: sensor.haierpi_diagnostics_compressor_starts_today
@@ -49,7 +48,7 @@ cards:
         name: Sprężarka · zadana częstotliwość
 
   - type: entities
-    title: PR6 · odszranianie
+    title: Cykle · odszranianie
     show_header_toggle: false
     entities:
       - entity: sensor.haierpi_diagnostics_defrost_starts_today
@@ -64,7 +63,7 @@ cards:
         name: Temperatura Tdef
 
   - type: entities
-    title: PR7 · obieg chłodniczy i hydrauliczny
+    title: Obieg · obieg chłodniczy i hydrauliczny
     show_header_toggle: false
     entities:
       - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
@@ -81,7 +80,7 @@ cards:
         name: Odchylenie częstotliwości sprężarki (Hz)
 
   - type: history-graph
-    title: PR7 · temperatury (ostatnie 24 h)
+    title: Obieg · temperatury (ostatnie 24 h)
     hours_to_show: 24
     refresh_interval: 120
     entities:
@@ -95,7 +94,7 @@ cards:
         name: Tłoczenie–skraplanie
 
   - type: history-graph
-    title: PR7 · ciśnienie (ostatnie 24 h)
+    title: Obieg · ciśnienie (ostatnie 24 h)
     hours_to_show: 24
     refresh_interval: 120
     entities:
@@ -113,7 +112,7 @@ cards:
         name: Zadana częstotliwość
 
   - type: history-graph
-    title: PR6 · liczniki defrostów i startów (48 h)
+    title: Cykle · liczniki defrostów i startów (48 h)
     hours_to_show: 48
     refresh_interval: 120
     entities:
@@ -123,14 +122,9 @@ cards:
         name: Starty sprężarki dzisiaj
 
   - type: markdown
-    title: PR8 · historia SQLite
+    title: Historia pomiarów
     content: >-
-      PR8 przechowuje próbki i zdarzenia na HaierPi w
-      `/var/lib/haierpi/history.sqlite`. Nie tworzy osobnych encji HA.
-
-      **Raport i eksport CSV:** uruchom `python3 tools/pr8_report.py`
-      na kopii repozytorium zawierającej ten plik (albo pobierz sam
-      `tools/pr8_report.py` na komputer administracyjny).
-      Wykonywany jest tylko odczyt bazy, bez ingerencji w sterowanie.
-
-      _Wykresy powyżej wykorzystują historię Home Assistant, a nie bazę PR8._
+      Pompa nie prowadzi lokalnego rejestru SQLite.
+      **Długoterminowe wykresy i historię danych zapisuje Home Assistant.**
+      Liczniki cykli w NanoPi działają wyłącznie w RAM i resetują się
+      po restarcie usługi.
