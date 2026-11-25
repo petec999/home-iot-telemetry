@@ -1,0 +1,48 @@
+name: Export HaierPi dashboard as WebSocket-ready JSON
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'home_assistant/dashboards/haierpi-centrum-1.4.5_1.yaml'
+      - '.github/workflows/haierpi-json-export.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install 'PyYAML>=6,<7'
+      - name: Verify source and build JSON using same YAML as dashboard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, yaml
+          src=Path('home_assistant/dashboards/haierpi-centrum-1.4.5_1.yaml')
+          out=Path('home_assistant/dashboards/haierpi-centrum-1.4.5_1.json')
+          cfg=yaml.safe_load(src.read_text(encoding='utf-8'))
+          assert isinstance(cfg,dict)
+          assert len(cfg['views'])==4
+          assert len({x['path'] for x in cfg['views']})==4
+          assert all(x['cards'] for x in cfg['views'])
+          out.write_text(json.dumps(cfg,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print("Exported",out,len(out.read_bytes()),"bytes")
+          PY
+      - name: Commit generated JSON when source changes
+        run: |
+          if git diff --quiet -- home_assistant/dashboards/haierpi-centrum-1.4.5_1.json && \
+             git ls-files --error-unmatch home_assistant/dashboards/haierpi-centrum-1.4.5_1.json >/dev/null 2>&1; then
+            echo "No JSON change"
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add home_assistant/dashboards/haierpi-centrum-1.4.5_1.json
+          git commit -m "build(ha): sync WebSocket-ready JSON with 1.4.5_1 YAML"
+          git push origin HEAD:main
