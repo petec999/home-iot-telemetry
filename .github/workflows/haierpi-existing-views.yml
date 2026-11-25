@@ -1,0 +1,23 @@
+name: Test adding diagnostics to existing HA dashboard
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'home_assistant/add-haierpi-views.py'
+      - 'home_assistant/dashboards/haierpi-centrum-1.4.5_1.json'
+      - 'tests/test_add_existing_haierpi_views.py'
+      - '.github/workflows/haierpi-existing-views.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax validation
+        run: python -m py_compile home_assistant/add-haierpi-views.py
+      - name: Safe append to existing Lovelace configuration (mock)
+        run: python -m unittest discover -s tests -p test_add_existing_haierpi_views.py -v
