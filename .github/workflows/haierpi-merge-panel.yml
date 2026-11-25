@@ -1,0 +1,22 @@
+name: Verify merge into existing Pompa ciepła and Klimatyzacja
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'home_assistant/merge-haierpi-panel.py'
+      - 'home_assistant/dashboards/haierpi-centrum-1.4.5_1.json'
+      - 'tests/test_merge_haierpi_panel.py'
+      - '.github/workflows/haierpi-merge-panel.yml'
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax and safe simulated dashboard migration
+        run: |
+          python -m py_compile home_assistant/merge-haierpi-panel.py
+          python -m unittest discover -s tests -p test_merge_haierpi_panel.py -v
