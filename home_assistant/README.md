@@ -57,3 +57,26 @@ repozytorium na potrzeby odtwarzania, ale obecnie zalecana jest powyższa
 - `dashboards/haierpi-centrum-1.4.5_1.json`
 - `dashboards/haier-diagnostyka-view.yaml`
 
+
+## Klimatyzacja · Midea Cloud Control 0.2.0
+
+Po instalacji integracji [Midea Cloud Control](https://github.com/petec999/midea-cloud-control)
+uruchom w terminalu Home Assistant:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/update-midea-panel.py | python3 -
+```
+
+Instalator wyszukuje istniejący klimatyzator w widoku `klimatyzacja` i dopasowuje
+nowe encje na podstawie rejestru urządzeń i unikalnych identyfikatorów. Nie
+dodaje innych urządzeń z konta. Pomija wyłączone lub nieobecne encje.
+Dodaje sterowanie ECO, Turbo, Sleep i LED, dwa sensory temperatury, warunki
+w domu, wykres 24 h oraz diagnostykę filtra i błędów. Zachowuje istniejący
+termostat i pozostałe widoki. Nie wysyła komend do klimatyzatora ani pompy ciepła.
+
+Przed zapisem tworzy pełną kopię pulpitu w `/config/lovelace-backups/`.
+W przypadku braku wymaganych encji temperatury albo niejednoznacznego
+urządzenia przerywa bez zapisu. Opcja `python3 - --dry-run` pozwala sprawdzić
+plan bez zapisu. Restart Home Assistant nie jest potrzebny.
+
+Testy offline: `python3 -m unittest discover -s tests -p test_midea_panel.py -v`.
