@@ -62,16 +62,19 @@ def resolve(view, registry, states):
         raise RuntimeError("Expected exactly one existing Midea climate entity in Klimatyzacja; no changes saved")
     target = climate[0]
     fields = {}
+    registered = set()
     for field, (domain, _, _) in FIELDS.items():
         matches = [r for r in entries if r.get("unique_id") == str(target["unique_id"]) + "_" + field
                    and r["entity_id"].startswith(domain + ".")
                    and r.get("device_id") == target.get("device_id")]
         if len(matches) > 1:
             raise RuntimeError("Ambiguous registry field: " + field)
-        if matches and not matches[0].get("disabled_by") and matches[0]["entity_id"] in live:
-            fields[field] = matches[0]["entity_id"]
+        if matches:
+            registered.add(matches[0]["entity_id"])
+            if not matches[0].get("disabled_by") and matches[0]["entity_id"] in live:
+                fields[field] = matches[0]["entity_id"]
     rooms = {e for e in ROOM_ROWS if e in live}
-    return target["entity_id"], fields, rooms
+    return target["entity_id"], fields, rooms, registered
 
 
 def row(entity, name, icon=None):
@@ -117,10 +120,13 @@ def transform(config, registry, states):
     if len(views) != 1:
         raise RuntimeError("Expected one Klimatyzacja view")
     view = views[0]
-    climate, fields, rooms = resolve(view, registry, states)
+    climate, fields, rooms, registered = resolve(view, registry, states)
     if not {"indoor_temperature", "outdoor_temperature"} <= fields.keys():
         raise RuntimeError("Missing Midea 0.2.0 temperature entities; dashboard unchanged")
-    managed = set(fields.values()) | rooms
+    # This dashboard is for Jasm​​inowa: ECO is absent from the vendor app and
+    # LED is explicitly unsupported via cloud. Keep these optional integration
+    # features available for other models, but never render them in this view.
+    managed = registered | set(ROOM_ROWS)
     # Preserve the existing thermostat and every unrelated card.
     if isinstance(view.get("sections"), list) and view["sections"]:
         containers = view["sections"]
@@ -143,7 +149,7 @@ def transform(config, registry, states):
         return {"type": "entities", "title": title, "show_header_toggle": False, "entities": rows}
 
     new = []
-    if switches := [field_row(f) for f in ("eco", "turbo", "sleep", "display_on") if f in fields]:
+    if switches := [field_row(f) for f in ("turbo", "sleep") if f in fields]:
         new.append(entities("Midea · sterowanie", switches))
     new.append(entities("Midea · temperatury", [field_row(f) for f in
                                                 ("indoor_temperature", "outdoor_temperature")]))
