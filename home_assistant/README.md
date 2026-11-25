@@ -1,4 +1,4 @@
-# Home Assistant · HaierPi 1.4.5_1
+# Home Assistant · HaierPi 1.4.5_3
 
 ## Aktualny sposób wdrożenia — bez dodatkowych zakładek
 
@@ -58,7 +58,19 @@ repozytorium na potrzeby odtwarzania, ale obecnie zalecana jest powyższa
 - `dashboards/haier-diagnostyka-view.yaml`
 
 
-## Klimatyzacja · Midea Cloud Control 0.2.0
+## Pompa ciepła · watchdog MQTT v2
+
+Po instalacji watchdogu z [HaierPi 1.4.5_3](https://github.com/petec999/hpi/releases/tag/v1.4.5_3) uruchom w terminalu HA:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/update-haier-watchdog-panel.py | python3 -
+```
+
+Skrypt dodaje jedną kartę „HaierPi · komunikacja MQTT” w istniejącym widoku `pompa-ciepla`. Wymaga encji `sensor.haierpi_mqtt_heartbeat`, zapisuje kopię pulpitu, nie zmienia innych widoków i nie wymaga restartu. Opcja `python3 - --dry-run` sprawdza zgodność bez zapisu.
+
+Karta pokazuje świeżość odbioru heartbeat w HA i czas ostatniej zmiany. Watchdog na NanoPi sprawdza niezależnie potwierdzenie REST; ostrzega po 90 s, alarmuje po 180 s i może zlecić ograniczony reconnect MQTT. Powiadomienia trwałe przez REST są kasowane po potwierdzonym powrocie. Jeśli API HA jest niedostępne, nie można wysłać powiadomienia. Karta nie zastępuje kontroli świeżości R141/R241. Normalne działanie watchdogu v2 i karty potwierdzono 25.11.2026; sprzętowe testy awarii i rebootu pozostają otwarte.
+
+## Klimatyzacja · Midea Cloud Control 0.2.1
 
 Po instalacji integracji [Midea Cloud Control](https://github.com/petec999/midea-cloud-control)
 uruchom w terminalu Home Assistant:
