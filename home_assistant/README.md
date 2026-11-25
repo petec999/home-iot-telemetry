@@ -1,78 +1,68 @@
-# Home Assistant · HaierPi diagnostics 1.4.5_1
+# Home Assistant · HaierPi 1.4.5_1
 
-This directory contains **actual Lovelace YAML** aligned with the confirmed Home Assistant
-entity IDs on the owner's system (25 November 2026) and with source release
-[`petec999/hpi v1.4.5_1`](https://github.com/petec999/hpi/releases/tag/v1.4.5_1).
+The owner already has a working Home Assistant panel. **The recommended deployment
+adds four new diagnostics tabs to the EXISTING/default dashboard**, without
+creating a separate dashboard and without deleting any existing cards.
 
-## Ready-to-use dashboard (recommended)
+## One command in Home Assistant Terminal & SSH
 
-[`dashboards/haierpi-centrum-1.4.5_1.yaml`](dashboards/haierpi-centrum-1.4.5_1.yaml)
-is a **whole-dashboard RAW configuration** with four tabs:
+```sh
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/add-haierpi-views.py | python3 -
+```
 
-1. **Przegląd** — health, compressor Hz, hydraulic readings, overview of 14 diagnostics.
-2. **Cykle i defrost** — all 8 RAM-only compressor/defrost counters and graphs.
-3. **Obieg chłodniczy** — 6 derived circuit metrics plus actual HaierPi temperatures,
-   bar pressures, Superheat, Subcooling and trends.
-4. **Bilans energii** — existing Home Assistant energy-balance sensors and *daily*
-   COP, not the unavailable `sensor.haier_cop_chwilowy`.
+Requirements: run this **on the Home Assistant machine in Terminal/SSH add-on**,
+not on NanoPi `HaierPi`. The add-on should have the Home Assistant API permission
+(`SUPERVISOR_TOKEN`). A direct connection using a private `HA_TOKEN` is supported
+for advanced users who cannot expose the Supervisor proxy. Do **not** paste tokens
+into chat, GitHub, or a dashboard.
 
-### Install via Home Assistant UI
+The script uses the official `lovelace/config` and `lovelace/config/save`
+WebSocket APIs rather than writing `.storage` or changing
+`configuration.yaml`. It downloads JSON generated from our checked-in YAML
+on GitHub, verifies the named tabs and key real HA entities, then:
 
-1. In **Settings → Dashboards**, create a **new, user-editable** dashboard called
-   `HaierPi · Diagnostyka`. Do not overwrite the existing dashboard.
-2. Open the new dashboard, use **Edit dashboard** (pencil), then its **⋮** menu
-   → **Raw configuration editor**.
-3. Copy and paste the **entire** contents of
-   `haierpi-centrum-1.4.5_1.yaml`, beginning with `title:` and `views:`.
-4. Save. No Home Assistant restart, HACS/custom cards, sensor YAML or NanoPi
-   installation is needed. Home Assistant's Recorder is responsible for charts.
+1. Fetches the existing/default dashboard.
+2. Appends/updates only the four namespaced HaierPi tabs:
+   `haierpi-przeglad`, `haierpi-cykle`, `haierpi-obieg`, `haierpi-bilans`.
+3. Saves a full backup of the **old dashboard** under
+   `/config/haierpi-lovelace-backups/` before updating.
+4. Saves via the HA WebSocket API, rereads and verifies the result.
 
-### Add only one view to an existing dashboard
+Other views and their cards are preserved. Re-running is idempotent; no restart
+of Home Assistant or NanoPi is needed. If the current dashboard is YAML-managed
+or auto-generated, or permissions are insufficient, the script refuses to
+change it and prints a reason. A verified backup can be restored using the same
+official WebSocket API, not by editing `.storage` while HA runs.
 
-Use [`dashboards/haier-diagnostyka-view.yaml`](dashboards/haier-diagnostyka-view.yaml)
-**in the YAML editor for a single view** (not in the whole-dashboard RAW editor).
-It intentionally has no outer `views:` key. Back up the view first.
-The single view is comprehensive and therefore longer than the four-tab dashboard.
+## What the new tabs display
 
-## Entity/logic compatibility
+- **Przegląd:** status, compressor fact/fset, temperature, daily COP (if defined)
+  and availability checks.
+- **Cykle i defrost:** eight RAM-only MQTT counters from
+  `haierpi-cycles.service`, defrost context and graphs.
+- **Obieg chłodniczy:** six calculated read-only metrics from
+  `haierpi-circuit.service`; live Twi/Two, Td, Ts, TsatPs/TSatPd, pressures
+  and Superheat/Subcooling.
+- **Bilans energii:** existing independent Home Assistant energy and COP
+  templates. The unavailable instantaneous COP is intentionally omitted.
 
-The actual system contains all **8 `sensor.haierpi_diagnostics_*`** metrics and all
-**6 `sensor.haierpi_advanced_diagnostics_*`** metrics. The compatibility
-`unique_id` prefixes `HaierPi_PR6_` and `HaierPi_PR7_` originate in the
-MQTT publisher, not in the display names or service unit names. Do not rename
-these IDs casually or duplicate MQTT Discovery entities.
+These entities were confirmed on the owner's actual HA installation on
+25 November 2026. The 14 bridge entity IDs are additionally checked in CI
+against `petec999/hpi` tag `v1.4.5_1`. Compatibility IDs in MQTT retain
+their old prefixes to avoid duplicates; display names are descriptive.
 
-The live services on NanoPi are `haierpi-cycles` and `haierpi-circuit` and
-record **no history on SD**. Daily counts reset at service/device restart.
-The cards use **only actual listed HA IDs**; in particular the old
-`sensor.haier_cop_chwilowy` is unavailable and does not appear as an entity
-card. The overview and energy tab use the independently computed
-`sensor.haier_bilans_cop_dobowy`, correctly labeled **daily COP**.
+The dashboard files remain available for manual import or YAML-managed HA:
 
-Some legacy source entities (e.g. `sensor.haierpi_pd`,
-`sensor.haierpi_pch`, `sensor.haierpi_delta_temp_eco`) are unavailable:
-the dashboard intentionally omits them. The native HaierPi MQTT sensors are
-used instead of similarly named older `sensor.haier_*` sources when reading
-the refrigeration circuit, because the two sets can disagree.
+- `dashboards/haierpi-centrum-1.4.5_1.yaml`: full independent
+  four-tab dashboard template, **not the preferred terminal method**.
+- `dashboards/haier-diagnostyka-view.yaml`: one view for manual insertion.
+- `dashboards/haierpi-centrum-1.4.5_1.json`: generated JSON used
+  automatically by the terminal installer.
 
-The presence of HA entities is **not** evidence that the currently deployed
-*main controller* has already been upgraded to upstream Stable. The
-`1.4.5_1` label here means compatibility with the separately distributed
-diagnostic package; original core must be checked independently.
+The label 1.4.5_1 denotes the dashboard/add-on distribution, **not confirmation
+that the original running NanoPi core has been upgraded to upstream Stable**.
 
-## Safety / interpretation
-
-- All Lovelace cards are **read-only**.
-- No MQTT control commands or automations are part of this dashboard.
-- A sensor showing `0` is **not** treated as unavailable.
-- `Defrost Chance` and `Szron` are separate user Home Assistant heuristics,
-  not confirmation that the compressor is actively defrosting.
-- `haier_bilans_cop_dobowy` is NOT instantaneous COP and is not provided by
-  the read-only circuit bridge.
-- Values updated at different times can disagree (e.g. native Twi/Two versus
-  MQTT-derived water ΔT). Check entity timestamps/availability before making
-  physical-system conclusions.
-- No database on NanoPi: Home Assistant's Recorder owns all dashboard history.
-
-GitHub Actions checks YAML and compares the 14 entity IDs with the pinned
-`petec999/hpi` release source on relevant changes.
+All dashboard functionality is read-only and does not transmit control
+commands, change existing heating automations, or store diagnostics on the
+NanoPi SD card. Counters in NanoPi RAM reset on its reboot; Home Assistant
+Recorder provides long-term history.
