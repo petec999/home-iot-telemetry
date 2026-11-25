@@ -1,130 +1,380 @@
-# HaierPi read-only technical diagnostics view — Home Assistant built-in cards only.
-# Add as a NEW VIEW in an existing YAML dashboard (not as full dashboard config).
+# Pojedynczy widok do edytora YAML WIDOKU (bez klucza views:).
+# Potwierdzone identyfikatory encji HA, wersja 1.4.5_1.
 title: Diagnostyka techniczna
 path: haier-diagnostyka
 icon: mdi:heat-pump
 cards:
   - type: markdown
-    title: HaierPi · stan i praca urządzenia
-    content: >-
-      **Diagnostyka sprężarki i obiegu chłodniczego** · wszystkie wartości pochodzą z MQTT.
+    title: HaierPi · stan instalacji
+    content: |
+      {% set f = states('sensor.haierpi_compressor_fact') %}
+      {% set t = states('sensor.haierpi_tao') %}
+      {% set cop = states('sensor.haier_bilans_cop_dobowy') %}
+      **Sterownik:** HaierPi · wydanie diagnostyczne 1.4.5_1
 
-      {% set comp = states('sensor.haierpi_diagnostics_compressor_run_today') | float(0) %}
-      {% set frost = states('sensor.haierpi_diagnostics_defrost_run_today') | float(0) %}
-      {% set last_comp = states('sensor.haierpi_diagnostics_last_compressor_cycle') | float(0) %}
-      {% set last_frost = states('sensor.haierpi_diagnostics_last_defrost_cycle') | float(0) %}
+      **Sprężarka:** {% if is_number(f) %}{{ 'pracuje' if (f | float) >= 1 else 'zatrzymana' }} ({{ f }} Hz){% else %}brak aktualnego pomiaru{% endif %}
 
-      **Sprężarka:** {{ (comp / 3600) | round(2) }} h dzisiaj,
-      {{ states('sensor.haierpi_diagnostics_compressor_starts_today') }} uruchomień.
+      **Temperatura na zewnątrz (HaierPi):** {% if is_number(t) %}{{ t }} °C{% else %}brak danych{% endif %}
 
-      **Odszranianie:** {{ (frost / 60) | round(1) }} min dzisiaj,
-      {{ states('sensor.haierpi_diagnostics_defrost_starts_today') }} rozpoczęć.
+      **COP dobowy (bilans HA):** {% if is_number(cop) %}{{ cop }}{% else %}niedostępny{% endif %}
 
-      **Ostatni cykl sprężarki:** {{ (last_comp / 60) | round(1) }} min.
+      _Panel wyłącznie do odczytu. Nie steruje pompą. COP dobowy pochodzi z bilansu Home Assistant, a nie z nowego modułu diagnostycznego._
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.haierpi_compressor_fact
+        name: Sprężarka · rzeczywiste Hz
+      - type: tile
+        entity: sensor.haierpi_compressor_fset
+        name: Sprężarka · zadane Hz
+      - type: tile
+        entity: sensor.haierpi_tao
+        name: Temperatura zewnętrzna
+      - type: tile
+        entity: sensor.haierpi_tdef
+        name: Temperatura parownika (Tdef)
+      - type: tile
+        entity: sensor.haier_bilans_cop_dobowy
+        name: COP dobowy (bilans)
+      - type: tile
+        entity: sensor.haier_bilans_moc_pradu
+        name: Pobór prądu · bilans HA
+  - type: entities
+    title: Hydraulika i praca pompy
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_twi
+        name: Woda na wejściu (Twi)
+      - entity: sensor.haierpi_two
+        name: Woda na wyjściu (Two)
+      - entity: sensor.haierpi_pump
+        name: Pompa obiegowa
+      - entity: sensor.haierpi_3_way_valve
+        name: Zawór trójdrogowy
+      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
+        name: Różnica Two − Twi (diagnostyka)
+      - entity: sensor.haierpi_active_error
+        name: Aktywny błąd HaierPi
+  - type: history-graph
+    title: Sprężarka · zadana i rzeczywista (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_compressor_fact
+        name: Rzeczywiste Hz
+      - entity: sensor.haierpi_compressor_fset
+        name: Zadane Hz
+  - type: markdown
+    title: Dostępność diagnostyki
+    content: |
+      {% set ids = [
+        'sensor.haierpi_diagnostics_compressor_starts_today',
+        'sensor.haierpi_diagnostics_compressor_run_today',
+        'sensor.haierpi_diagnostics_completed_compressor_cycles_today',
+        'sensor.haierpi_diagnostics_last_compressor_cycle',
+        'sensor.haierpi_diagnostics_defrost_starts_today',
+        'sensor.haierpi_diagnostics_defrost_run_today',
+        'sensor.haierpi_diagnostics_completed_defrost_cycles_today',
+        'sensor.haierpi_diagnostics_last_defrost_cycle',
+        'sensor.haierpi_advanced_diagnostics_co_water_delta_t',
+        'sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift',
+        'sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach',
+        'sensor.haierpi_advanced_diagnostics_discharge_condensing_gap',
+        'sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta',
+        'sensor.haierpi_advanced_diagnostics_compressor_frequency_deviation'
+        ] %}
+      {% set ns = namespace(ok=0,missing=[]) %}
+      {% for id in ids %}
+        {% if is_number(states(id)) %}
+          {% set ns.ok = ns.ok + 1 %}
+        {% else %}
+          {% set ns.missing = ns.missing + [id] %}
+        {% endif %}
+      {% endfor %}
+      **Dostępne odczyty liczbowe: {{ ns.ok }}/14.**
 
-      **Ostatni defrost:** {{ last_frost | round(0) }} s.
-
-      {% if not is_number(states('sensor.haierpi_diagnostics_compressor_run_today')) %}
-      ⚠️ Brak aktualnych danych licznika sprężarki.
+      {% if ns.missing | count > 0 %}
+      ⚠️ **Brak odczytów:** {{ ns.missing | join(', ') }}
+      {% else %}
+      Wszystkie 14 encji ma odczyt liczbowy. Nie oznacza to automatycznie, że wszystkie dane są świeże — sprawdzaj ostatnią aktualizację w szczegółach encji.
       {% endif %}
 
-      _Liczniki działają w RAM — po restarcie usługi dzienne sumy zaczynają się od zera. Długoterminowe wykresy przechowuje Home Assistant._
+      _Zera są prawidłowymi wartościami; niedostępne encje nie są zamieniane na zero. Liczniki działają tylko w RAM na NanoPi._
 
+  - type: markdown
+    title: Podsumowanie pracy sprężarki i odszraniania
+    content: |
+      {% set cr = states('sensor.haierpi_diagnostics_compressor_run_today') %}
+      {% set dr = states('sensor.haierpi_diagnostics_defrost_run_today') %}
+      {% set lc = states('sensor.haierpi_diagnostics_last_compressor_cycle') %}
+      {% set ld = states('sensor.haierpi_diagnostics_last_defrost_cycle') %}
+      **Praca sprężarki dziś:** {% if is_number(cr) %}{{ (cr | float / 3600) | round(2) }} h{% else %}brak danych{% endif %}.
+
+      **Defrost dziś:** {% if is_number(dr) %}{{ (dr | float / 60) | round(1) }} min{% else %}brak danych{% endif %}.
+
+      **Ostatni zakończony cykl sprężarki:** {% if is_number(lc) %}{{ (lc | float / 60) | round(1) }} min{% else %}brak danych{% endif %}.
+
+      **Ostatni zakończony defrost:** {% if is_number(ld) %}{{ (ld | float / 60) | round(1) }} min{% else %}brak danych{% endif %}.
+
+      _Liczniki resetują się po restarcie usługi lub urządzenia; nie należy traktować ich jako pełnego bilansu dobowego, jeśli restart nastąpił w ciągu dnia._
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.haierpi_diagnostics_compressor_starts_today
+        name: Starty sprężarki dziś
+      - type: tile
+        entity: sensor.haierpi_diagnostics_completed_compressor_cycles_today
+        name: Zakończone cykle sprężarki
+      - type: tile
+        entity: sensor.haierpi_diagnostics_defrost_starts_today
+        name: Rozpoczęte defrosty dziś
+      - type: tile
+        entity: sensor.haierpi_diagnostics_completed_defrost_cycles_today
+        name: Zakończone defrosty
   - type: entities
-    title: Cykle · sprężarka
+    title: Wszystkie liczniki z HaierPi (RAM)
     show_header_toggle: false
     entities:
       - entity: sensor.haierpi_diagnostics_compressor_starts_today
-        name: Uruchomienia dzisiaj
+        name: Uruchomienia sprężarki
       - entity: sensor.haierpi_diagnostics_compressor_run_today
-        name: Łączny czas pracy dzisiaj (s)
+        name: Praca sprężarki dzisiaj (s)
       - entity: sensor.haierpi_diagnostics_completed_compressor_cycles_today
-        name: Zakończone cykle dzisiaj
+        name: Zakończone cykle sprężarki
       - entity: sensor.haierpi_diagnostics_last_compressor_cycle
-        name: Ostatni cykl (s)
-      - entity: sensor.haierpi_compressor_fact
-        name: Sprężarka · rzeczywista częstotliwość
-      - entity: sensor.haierpi_compressor_fset
-        name: Sprężarka · zadana częstotliwość
-
+        name: Ostatni zakończony cykl (s)
+      - entity: sensor.haierpi_diagnostics_defrost_starts_today
+        name: Uruchomienia defrostu
+      - entity: sensor.haierpi_diagnostics_defrost_run_today
+        name: Praca defrostu dzisiaj (s)
+      - entity: sensor.haierpi_diagnostics_completed_defrost_cycles_today
+        name: Zakończone defrosty
+      - entity: sensor.haierpi_diagnostics_last_defrost_cycle
+        name: Ostatni zakończony defrost (s)
   - type: entities
-    title: Cykle · odszranianie
+    title: Odszranianie · kontekst
     show_header_toggle: false
     entities:
-      - entity: sensor.haierpi_diagnostics_defrost_starts_today
-        name: Rozpoczęte defrosty dzisiaj
-      - entity: sensor.haierpi_diagnostics_defrost_run_today
-        name: Czas defrostu dzisiaj (s)
-      - entity: sensor.haierpi_diagnostics_completed_defrost_cycles_today
-        name: Zakończone defrosty dzisiaj
-      - entity: sensor.haierpi_diagnostics_last_defrost_cycle
-        name: Ostatni defrost (s)
       - entity: sensor.haierpi_tdef
         name: Temperatura Tdef
-
-  - type: entities
-    title: Obieg · obieg chłodniczy i hydrauliczny
-    show_header_toggle: false
-    entities:
-      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
-        name: Różnica temperatur wody CO
-      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
-        name: Różnica temperatur nasycenia czynnika
-      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
-        name: Różnica temperatur powietrza i parowania
-      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
-        name: Różnica temperatur tłoczenia i skraplania
-      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
-        name: Różnica ciśnień czynnika (MPa)
-      - entity: sensor.haierpi_advanced_diagnostics_compressor_frequency_deviation
-        name: Odchylenie częstotliwości sprężarki (Hz)
-
+      - entity: sensor.haierpi_tao
+        name: Temperatura otoczenia Tao
+      - entity: sensor.haier_defrost_chance
+        name: Defrost Chance (pomocniczy wskaźnik)
+      - entity: sensor.haier_szron_stan
+        name: Stan szronu (osobna logika HA)
+      - entity: sensor.haier_szron_ryzyko
+        name: Ryzyko szronu (osobna logika HA)
   - type: history-graph
-    title: Obieg · temperatury (ostatnie 24 h)
-    hours_to_show: 24
-    refresh_interval: 120
-    entities:
-      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
-        name: CO ΔT
-      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
-        name: Lift
-      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
-        name: Powietrze–parowanie
-      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
-        name: Tłoczenie–skraplanie
-
-  - type: history-graph
-    title: Obieg · ciśnienie (ostatnie 24 h)
-    hours_to_show: 24
-    refresh_interval: 120
-    entities:
-      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
-        name: Różnica ciśnień (MPa)
-
-  - type: history-graph
-    title: Sprężarka · częstotliwość (24 h)
+    title: Częstotliwość sprężarki (24 h)
     hours_to_show: 24
     refresh_interval: 120
     entities:
       - entity: sensor.haierpi_compressor_fact
-        name: Rzeczywista częstotliwość
+        name: Faktyczne Hz
       - entity: sensor.haierpi_compressor_fset
-        name: Zadana częstotliwość
-
+        name: Zadane Hz
   - type: history-graph
-    title: Cykle · liczniki defrostów i startów (48 h)
+    title: Starty sprężarki i defrostów (48 h)
     hours_to_show: 48
     refresh_interval: 120
     entities:
-      - entity: sensor.haierpi_diagnostics_defrost_starts_today
-        name: Defrosty dzisiaj
       - entity: sensor.haierpi_diagnostics_compressor_starts_today
-        name: Starty sprężarki dzisiaj
+        name: Starty sprężarki
+      - entity: sensor.haierpi_diagnostics_defrost_starts_today
+        name: Defrosty
+  - type: history-graph
+    title: Temperatura odszraniania (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_tao
+        name: Tao
+      - entity: sensor.haierpi_tdef
+        name: Tdef
+  - type: markdown
+    content: |
+      _Defrost Chance, Szron (stan) i Szron (ryzyko) to niezależne wskaźniki Home Assistant, a nie potwierdzony stan defrostu. Nie wyciągaj z ich wartości wniosku, że odszranianie rzeczywiście trwa._
 
   - type: markdown
-    title: Historia pomiarów
-    content: >-
-      Pompa nie prowadzi lokalnego rejestru SQLite.
-      **Długoterminowe wykresy i historię danych zapisuje Home Assistant.**
-      Liczniki cykli w NanoPi działają wyłącznie w RAM i resetują się
-      po restarcie usługi.
+    title: Obieg chłodniczy · interpretacja
+    content: |
+      Sześć wskaźników obiegu pochodzi z **`haierpi-circuit`** i jest obliczanych z odczytów HaierPi. Różnice temperatur i ciśnień służą do diagnostyki; **nie są to alarmy producenta ani obliczony COP**.
+
+      Gdy sprężarka jest wyłączona, część wskaźników może być bliska zeru. Dane z osobnych encji MQTT mogą pochodzić z różnych chwil; nie porównuj ich bez uwzględnienia czasu aktualizacji.
+  - type: entities
+    title: Sześć obliczanych parametrów 1.4.5_1
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
+        name: Różnica temperatur wody Two − Twi
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
+        name: Różnica temperatur nasycenia czynnika
+      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
+        name: Powietrze − temperatura parowania
+      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
+        name: Tłoczenie − temperatura skraplania
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
+        name: Różnica ciśnień Pd − Ps (MPa)
+      - entity: sensor.haierpi_advanced_diagnostics_compressor_frequency_deviation
+        name: Odchylenie częstotliwości fset − fact
+  - type: entities
+    title: Temperatury źródłowe HaierPi
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_twi
+        name: Woda z instalacji (Twi)
+      - entity: sensor.haierpi_two
+        name: Woda do instalacji (Two)
+      - entity: sensor.haierpi_tao
+        name: Powietrze zewnętrzne (Tao)
+      - entity: sensor.haierpi_tdef
+        name: Parownik (Tdef)
+      - entity: sensor.haierpi_tsatpsact
+        name: Nasycenie parowania (TsatPs act)
+      - entity: sensor.haierpi_tsatpdact
+        name: Nasycenie skraplania (TsatPd act)
+      - entity: sensor.haierpi_td
+        name: Tłoczenie sprężarki (Td)
+      - entity: sensor.haierpi_ts
+        name: Temperatura Ts
+      - entity: sensor.haierpi_superheat
+        name: Przegrzanie (Superheat)
+      - entity: sensor.haierpi_subcooling
+        name: Dochłodzenie (Subcooling)
+  - type: entities
+    title: Ciśnienia, sprężarka, zawór
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haierpi_pdact
+        name: Ciśnienie wysokie Pd act (bar)
+      - entity: sensor.haierpi_psact
+        name: Ciśnienie niskie Ps act (bar)
+      - entity: sensor.haierpi_eev_level
+        name: Zawór rozprężny EEV
+      - entity: sensor.haierpi_compressor_fact
+        name: Faktyczna częstotliwość
+      - entity: sensor.haierpi_compressor_fset
+        name: Zadana częstotliwość
+  - type: history-graph
+    title: Woda CO · wejście/wyjście (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_twi
+        name: Twi
+      - entity: sensor.haierpi_two
+        name: Two
+  - type: history-graph
+    title: Temperatura parowania i skraplania (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_tsatpsact
+        name: TsatPs act
+      - entity: sensor.haierpi_tsatpdact
+        name: TsatPd act
+      - entity: sensor.haierpi_td
+        name: Td
+  - type: history-graph
+    title: Przegrzanie i dochłodzenie (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_superheat
+        name: Superheat
+      - entity: sensor.haierpi_subcooling
+        name: Subcooling
+  - type: history-graph
+    title: Różnica ciśnień czynnika · MPa (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_pressure_delta
+        name: Pd − Ps
+  - type: history-graph
+    title: Obliczone różnice temperatur · °C (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haierpi_advanced_diagnostics_refrigerant_saturation_lift
+        name: Lift
+      - entity: sensor.haierpi_advanced_diagnostics_ambient_evaporation_approach
+        name: Approach
+      - entity: sensor.haierpi_advanced_diagnostics_discharge_condensing_gap
+        name: Discharge gap
+      - entity: sensor.haierpi_advanced_diagnostics_co_water_delta_t
+        name: Two − Twi
+
+  - type: markdown
+    title: Bilans energii — istniejące sensory Home Assistant
+    content: |
+      Dane w tej zakładce pochodzą z **Twoich szablonów/bilansu w Home Assistant**, a nie z naszych dwóch modułów MQTT. Wartości energetyczne i COP nie są wyznaczane przez nową diagnostykę obiegu.
+
+      **`sensor.haier_cop_chwilowy` jest obecnie niedostępny** i celowo nie został użyty. COP dobowy ma inny okres uśredniania i nie powinien być podpisywany jako „COP chwilowy”.
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.haier_bilans_cop_dobowy
+        name: COP dobowy
+      - type: tile
+        entity: sensor.haier_bilans_prad_dzis
+        name: Prąd dziś · bilans
+      - type: tile
+        entity: sensor.haier_bilans_cieplo_netto_dzis
+        name: Ciepło netto dziś
+      - type: tile
+        entity: sensor.haier_bilans_cieplo_odebrane_dzis
+        name: Energia odebrana w defroście
+      - type: tile
+        entity: sensor.haier_bilans_moc_pradu
+        name: Pobór elektryczny
+      - type: tile
+        entity: sensor.haier_bilans_moc_grzania
+        name: Moc grzania
+  - type: entities
+    title: Pełny bilans Home Assistant
+    show_header_toggle: false
+    entities:
+      - entity: sensor.haier_bilans_cieplo_brutto_dzis
+        name: Ciepło brutto dzisiaj
+      - entity: sensor.haier_bilans_cieplo_netto_dzis
+        name: Ciepło netto dzisiaj
+      - entity: sensor.haier_bilans_cieplo_odebrane_dzis
+        name: Energia defrostu dzisiaj
+      - entity: sensor.haier_bilans_prad_dzis
+        name: Energia elektryczna dzisiaj
+      - entity: sensor.haier_bilans_cop_dobowy
+        name: COP dobowy
+      - entity: sensor.haier_bilans_cieplo_brutto_suma
+        name: Ciepło brutto razem
+      - entity: sensor.haier_bilans_cieplo_netto_suma
+        name: Ciepło netto razem
+      - entity: sensor.haier_bilans_cieplo_odebrane_suma
+        name: Energia defrostu razem
+      - entity: sensor.haier_bilans_prad_suma
+        name: Energia elektryczna razem
+  - type: history-graph
+    title: Bilans mocy · kW (24 h)
+    hours_to_show: 24
+    refresh_interval: 120
+    entities:
+      - entity: sensor.haier_bilans_moc_pradu
+        name: Moc elektryczna
+      - entity: sensor.haier_bilans_moc_grzania
+        name: Moc grzania
+      - entity: sensor.haier_bilans_moc_odebrana
+        name: Moc odebrana przy defroście
+  - type: history-graph
+    title: COP dobowy · historia (7 dni)
+    hours_to_show: 168
+    refresh_interval: 300
+    entities:
+      - entity: sensor.haier_bilans_cop_dobowy
+        name: COP dobowy
