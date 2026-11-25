@@ -1,0 +1,60 @@
+name: Test HaierPi terminal installer
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'home_assistant/install-haierpi-dashboard.sh'
+      - '.github/workflows/haierpi-installer.yml'
+  workflow_dispatch:
+jobs:
+  installer-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bash syntax and no-lovelace install, idempotency
+        run: |
+          set -euo pipefail
+          bash -n home_assistant/install-haierpi-dashboard.sh
+          export HA_CONFIG_DIR="$(mktemp -d)"
+          printf 'default_config:\n' > "$HA_CONFIG_DIR/configuration.yaml"
+          bash home_assistant/install-haierpi-dashboard.sh
+          grep -q '^lovelace:$' "$HA_CONFIG_DIR/configuration.yaml"
+          grep -q '^    haierpi-diagnostyka:$' "$HA_CONFIG_DIR/configuration.yaml"
+          test -s "$HA_CONFIG_DIR/dashboards/haierpi-centrum-1.4.5_1.yaml"
+          cp "$HA_CONFIG_DIR/configuration.yaml" /tmp/haierpi-config-before
+          bash home_assistant/install-haierpi-dashboard.sh
+          cmp /tmp/haierpi-config-before "$HA_CONFIG_DIR/configuration.yaml"
+      - name: Existing lovelace, dashboards and nonduplicate registration
+        run: |
+          set -euo pipefail
+          export HA_CONFIG_DIR="$(mktemp -d)"
+          cat > "$HA_CONFIG_DIR/configuration.yaml" <<'YAML'
+          default_config:
+          lovelace:
+            resources:
+              - url: /local/example.js
+                type: module
+            dashboards:
+              existing-panel:
+                mode: yaml
+                filename: existing.yaml
+                title: Existing
+          automation: !include automations.yaml
+          YAML
+          bash home_assistant/install-haierpi-dashboard.sh
+          grep -q '^      filename: dashboards/haierpi-centrum-1.4.5_1.yaml$' "$HA_CONFIG_DIR/configuration.yaml"
+          grep -q '^              - url: /local/example.js$' "$HA_CONFIG_DIR/configuration.yaml" && exit 1 || true
+          grep -q '^      - url: /local/example.js$' "$HA_CONFIG_DIR/configuration.yaml"
+          grep -q '^  automation:' "$HA_CONFIG_DIR/configuration.yaml" && exit 1 || true
+          grep -q '^automation: !include automations.yaml$' "$HA_CONFIG_DIR/configuration.yaml"
+      - name: Refuse complex include without touching configuration
+        run: |
+          set -euo pipefail
+          export HA_CONFIG_DIR="$(mktemp -d)"
+          printf 'lovelace: !include lovelace.yaml\n' > "$HA_CONFIG_DIR/configuration.yaml"
+          cp "$HA_CONFIG_DIR/configuration.yaml" /tmp/haierpi-config-complex-before
+          if bash home_assistant/install-haierpi-dashboard.sh; then
+            echo "ERROR: should refuse complex configuration"
+            exit 1
+          fi
+          cmp /tmp/haierpi-config-complex-before "$HA_CONFIG_DIR/configuration.yaml"
