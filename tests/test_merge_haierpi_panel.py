@@ -84,7 +84,7 @@ class MergeTests(unittest.TestCase):
           sum(1 for x in pump["cards"] if "sensor.haierpi_twi" in json.dumps(x)),
           1, "The repeated Twi in old entities should be cleaned, graphs excluded in synthetic fixture.")
         climate=result["views"][2]["sections"][0]["cards"]
-        cond=[x for x in climate if x.get("title")=="Warunki w domu · Zigbee"]
+        cond=[x for x in climate if x.get("title")=="Warunki w domu"]
         self.assertEqual(len(cond),1)
         self.assertIn("sensor.temperature_and_humidity_sensor_5_temperatura",json.dumps(cond[0]))
         graph=next(x for x in climate if x.get("type")=="history-graph")
