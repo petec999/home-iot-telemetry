@@ -1,4 +1,4 @@
-# Home Assistant · HaierPi 1.4.5_3
+# Home Assistant · Stable diagnostics and Adaptive preview
 
 ## Aktualny sposób wdrożenia — bez dodatkowych zakładek
 
@@ -94,3 +94,13 @@ urządzenia przerywa bez zapisu. Opcja `python3 - --dry-run` pozwala sprawdzić
 plan bez zapisu. Restart Home Assistant nie jest potrzebny.
 
 Testy offline: `python3 -m unittest discover -s tests -p test_midea_panel.py -v`.
+
+## Pompa ciepła · stan i liczniki Heater A4A (Adaptive preview)
+
+Po aktualizacji HaierPi do [wersji read-only](https://github.com/petec999/hpi/tree/feature/adaptive-learning) uruchom w terminalu HA:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/petec999/home-iot-telemetry/main/home_assistant/update-haier-heater-panel.py | python3 -
+```
+
+Skrypt zastępuje wcześniejszą kartę sterowania kartą wyłącznie do odczytu. W istniejącej zakładce `pompa-ciepla` pokazuje stan A4A, liczbę załączeń, obserwowany czas pracy oraz wykres 48 h. Rozpoznaje encje po MQTT unique_id; brak wymaganej encji powoduje przerwanie bez zapisu. Nie zmienia automatyki, nie wysyła poleceń, nie wymaga restartu HA. A4A to sygnał sterownika, nie pomiar poboru energii. Własne sterowanie A04 wycofano; osobna grzałka CWU nie została rozpoznana.
