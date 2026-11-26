@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add the Heater CO controls and counters to the existing Pompa ciepła view."""
+"""Add read-only Heater CO status and counters to the existing Pompa ciepła view."""
 import copy
 import os
 import sys
@@ -10,9 +10,7 @@ HELPER = ("https://raw.githubusercontent.com/petec999/home-iot-telemetry/"
 TITLE = "HaierPi · grzałka CO"
 HISTORY = "HaierPi · historia grzałki CO (48 h)"
 FIELDS = {
-    "HaierPi_HeaterCORequest": ("select", "Tryb grzałki CO — ON / OFF / AUTO", "mdi:radiator"),
     "HaierPi_Heater": ("binary_sensor", "Stan A4A — odczyt pompy", "mdi:heating-coil"),
-    "HaierPi_HeaterCOReason": ("sensor", "Powód / stan sterowania", "mdi:information-outline"),
     "HaierPi_HeaterStartsObserved": ("sensor", "Liczba załączeń", "mdi:counter"),
     "HaierPi_HeaterSecondsObserved": ("sensor", "Łączny obserwowany czas pracy", "mdi:timer-outline"),
 }
@@ -54,8 +52,7 @@ def transform(config, registry, states):
     card = {"type":"entities","title":TITLE,"show_header_toggle":False,
             "entities":list(rows.values())}
     graph = {"type":"history-graph","title":HISTORY,"hours_to_show":48,
-             "entities":[{"entity":rows["HaierPi_Heater"]["entity"],"name":"A4A"},
-                         {"entity":rows["HaierPi_HeaterCORequest"]["entity"],"name":"Żądanie CO"}]}
+             "entities":[{"entity":rows["HaierPi_Heater"]["entity"],"name":"A4A"}]}
     cards = containers[0]["cards"]
     insert = next((i+1 for i,c in enumerate(cards) if c.get("title")=="HaierPi · komunikacja MQTT"),0)
     cards[insert:insert]=[card,graph]
@@ -94,7 +91,7 @@ def main():
         ws.call("lovelace/config/save",config=result)
         if ws.call("lovelace/config", force=True) != result:
             raise RuntimeError("Save verification failed; backup: " + str(backup))
-        print("SUCCESS: Heater CO controls and counters added to Pompa ciepła. Refresh HA.")
+        print("SUCCESS: Heater CO read-only status and counters added to Pompa ciepła. Refresh HA.")
     finally:
         ws.close()
 

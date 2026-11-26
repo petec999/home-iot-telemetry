@@ -12,7 +12,7 @@ class HeaterPanelTest(unittest.TestCase):
         r=m["transform"](self.config,self.registry,self.states)
         self.assertEqual(r["views"][1],self.config["views"][1])
         self.assertEqual(r["views"][0]["cards"][1]["title"],m["TITLE"])
-        self.assertEqual(len(r["views"][0]["cards"][1]["entities"]),5)
+        self.assertEqual(len(r["views"][0]["cards"][1]["entities"]),3)
         self.assertEqual(r,m["transform"](r,self.registry,self.states))
         self.assertEqual(len(self.config["views"][0]["cards"]),2)
     def test_missing_entity_aborts(self):
@@ -24,3 +24,12 @@ class HeaterPanelTest(unittest.TestCase):
         v["sections"]=[{"cards":v.pop("cards")}]
         r=m["transform"](c,self.registry,self.states)
         self.assertEqual(r["views"][0]["sections"][0]["cards"][1]["title"],m["TITLE"])
+
+    def test_removes_old_controls(self):
+        c=deepcopy(self.config)
+        c["views"][0]["cards"].append({"type":"entities","title":m["TITLE"],"entities":["select.old_heater","sensor.old_reason"]})
+        c["views"][0]["cards"].append({"type":"history-graph","title":m["HISTORY"],"entities":["select.old_heater"]})
+        r=m["transform"](c,self.registry,self.states)
+        self.assertNotIn("select.old_heater",str(r))
+        self.assertNotIn("sensor.old_reason",str(r))
+        self.assertEqual(len([card for card in r["views"][0]["cards"] if card.get("title")==m["TITLE"]]),1)
