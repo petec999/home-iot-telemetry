@@ -1,0 +1,17 @@
+name: Home Assistant thematic icons
+on:
+  push:
+    paths:
+      - 'home_assistant/theme-entity-icons.py'
+      - '.github/workflows/ha-thematic-icons.yml'
+  workflow_dispatch:
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile home_assistant/theme-entity-icons.py
+      - run: python home_assistant/theme-entity-icons.py --self-test
