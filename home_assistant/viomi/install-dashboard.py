@@ -44,12 +44,18 @@ def identify(states,registry,vac_arg=None,cam_arg=None):
         e=r["entity_id"]; u=str(r.get("unique_id") or "")
         if r.get("platform")=="xiaomi_viomi" and e.startswith("sensor.") and e in live and uid and u.startswith(uid+"_"):
             sensors[u[len(uid)+1:]]=e
-    cameras=[r["entity_id"] for r in registry if r.get("platform") in ("robot_vacuum_map","xiaomi_cloud_map_extractor") and r["entity_id"].startswith("camera.") and r["entity_id"] in live]
+    candidates=[r for r in registry if r.get("platform") in ("robot_vacuum_map","xiaomi_cloud_map_extractor") and r["entity_id"].startswith(("image.","camera.")) and r["entity_id"] in live]
     if cam_arg:
-        if cam_arg not in cameras: raise RuntimeError("Specified camera is not a detected vacuum map camera")
-        cameras=[cam_arg]
-    if len(cameras)>1: raise RuntimeError("Multiple map cameras; use --camera")
-    cam=cameras[0] if cameras else None
+        candidates=[r for r in candidates if r["entity_id"]==cam_arg]
+        if not candidates: raise RuntimeError("Specified map entity not found")
+    else:
+        images=[r for r in candidates if r["entity_id"].startswith("image.")]
+        # The newer map integration enables image, not its optional legacy camera.
+        # Only suppress a camera when it belongs to the same config entry.
+        image_entries={r.get("config_entry_id") for r in images if r.get("config_entry_id")}
+        candidates=[r for r in candidates if r["entity_id"].startswith("image.") or r.get("config_entry_id") not in image_entries]
+    if len(candidates)>1: raise RuntimeError("Multiple map entities; specify --camera image.NAME or camera.NAME")
+    cam=candidates[0]["entity_id"] if candidates else None
     return robot["entity_id"],sensors,cam,live[robot["entity_id"]]["attributes"]
 def build_view(vac,sensors,cam,attrs,media):
     def group(keys):
@@ -64,13 +70,30 @@ def build_view(vac,sensors,cam,attrs,media):
     if speeds:
         cards.append(md("Siła ssania","Aktualnie: **{{ state_attr('"+vac+"','fan_speed') or 'Brak danych' }}**"))
         cards.append(grid([action({"Silent":"Cicho","Standard":"Standard","Medium":"Średnio","Turbo":"Turbo"}.get(s,s),"mdi:fan","vacuum.set_fan_speed",{"entity_id":vac,"fan_speed":s}) for s in speeds if s in ("Silent","Standard","Medium","Turbo")],4))
-    overview=group(("battery_level","cleaning_time","cleaned_area","charging"))
-    if overview: cards.append(grid(overview))
+    # Dynamic fallback: old integration has battery as an attribute and Xiaomi
+    # Home may have a separate battery sensor. Do not rely on registry IDs.
+    overview=[]
+    for k,unit in (("battery_level","%"),("cleaning_time"," min"),("cleaned_area"," m²")):
+        name,icon=KEYS[k]
+        source=sensors.get(k)
+        tpl="{% set v=state_attr('"+vac+"','"+k+"') %}"
+        if source:
+            tpl+="{% if is_number(states('"+source+"')) %}{% set v=states('"+source+"') %}{% endif %}"
+        if k=="battery_level":
+            tpl+="{% if not is_number(v) and is_number(states('sensor.viomi_de_329228021_v8_battery_level_p_3_1')) %}{% set v=states('sensor.viomi_de_329228021_v8_battery_level_p_3_1') %}{% endif %}"
+        tpl+="\n## {{ (v|string ~ '"+unit+"') if is_number(v) else 'Brak danych' }}"
+        overview.append(md(name,tpl))
+    overview+=group(("charging",))
+    cards.insert(2,grid(overview))
     maps=[md("Mapy domu","Mapa aktywna pochodzi z odkurzacza. Zapisane obrazy parteru i piętra to kopie, nie aktywne plany nawigacji. Zapisuj każdy plan dopiero po sprawdzeniu obrazu.")]
     if cam:
-        maps.append({"type":"picture-entity","entity":cam,"name":"Mapa aktywna","show_state":False,"camera_view":"auto"})
+        domain=cam.split(".",1)[0]
+        picture={"type":"picture-entity","entity":cam,"name":"Mapa aktywna","show_state":False}
+        if domain=="camera": picture["camera_view"]="auto"
+        maps.append(picture)
+        maps.append(md("Odczyt mapy","Encja: "+cam+"\n\nStan: {{ states('"+cam+"') }}"))
         if media:
-            maps.append(grid([action("Zapisz "+n.lower(),"mdi:content-save","camera.snapshot",{"entity_id":cam,"filename":"/media/viomi/"+f+".png"},"Czy aktywna mapa przedstawia "+n.lower()+"? Nadpiszesz zapisaną kopię.") for n,f in FLOORS]))
+            maps.append(grid([action("Zapisz "+n.lower(),"mdi:content-save",domain+".snapshot",{"entity_id":cam,"filename":"/media/viomi/"+f+".png"},"Czy aktywna mapa przedstawia "+n.lower()+"? Nadpiszesz zapisaną kopię.") for n,f in FLOORS]))
     else:
         maps.append(md("Mapa aktywna","Dodaj integrację Robot Vacuum Map. Następnie uruchom instalator panelu ponownie."))
     if media:
@@ -130,6 +153,15 @@ def selftest():
     assert new["views"][0]==base["views"][0] and len(base["views"])==1
     assert transform(new,view)==new
     assert "/media/viomi/pietro.png" in json.dumps(view)
+    img="image.viomi_live_map"
+    reg2=reg+[{"entity_id":img,"platform":"robot_vacuum_map","config_entry_id":"map"}]
+    reg2[-2]["config_entry_id"]="map"
+    states2=states+[{"entity_id":img,"attributes":{}}]
+    assert identify(states2,reg2)[2]==img
+    image_view=build_view(v,{},img,{},True)
+    assert "image.snapshot" in json.dumps(image_view)
+    assert "battery_level" in json.dumps(image_view)
+    assert "camera.snapshot" not in json.dumps(image_view)
     try: transform({"views":[{"path":VIEW}]},view)
     except RuntimeError: pass
     else: raise AssertionError("unrelated view replaced")
