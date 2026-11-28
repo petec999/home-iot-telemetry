@@ -1,0 +1,6 @@
+recorder:
+  exclude:
+    entities:
+      - sensor.haierpi_two
+      - sensor.haierpi_twi
+      - sensor.haierpi_tao
