@@ -80,7 +80,7 @@ def main():
         vac,sensors,cam,attrs=dash["identify"](states,ws.call("config/entity_registry/list"),args.vacuum,args.camera)
         if not cam:raise RuntimeError("No map entity found")
         manifest=json.loads(Path("/config/custom_components/xiaomi_viomi/manifest.json").read_text())
-        if manifest.get("version") not in ("0.1.8","0.1.9"):raise RuntimeError("Install Viomi 0.1.8 or 0.1.9 and restart Core first")
+        if manifest.get("version") not in ("0.1.8","0.1.9","0.1.10"):raise RuntimeError("Install Viomi 0.1.8, 0.1.9 or 0.1.10 and restart Core first")
         state=next(x for x in states if x["entity_id"]==cam)
         rooms=state.get("attributes",{}).get("rooms") or {}
         print("Vacuum:",vac,"map:",cam,"room IDs:",list(rooms),"active map ID:",attrs.get("map_id"))
