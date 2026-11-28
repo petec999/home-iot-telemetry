@@ -1,0 +1,16 @@
+template:
+  - binary_sensor:
+      - name: HA Heat Telemetry Missing
+        unique_id: ha_heat_telemetry_missing
+        device_class: problem
+        state: >
+          {{ not is_number(states('sensor.haierpi_compressor_fact'))
+             or states('binary_sensor.haierpi_defrost') not in ['on','off'] }}
+      - name: HA Heat Telemetry Sustained Outage
+        unique_id: ha_heat_telemetry_sustained_outage
+        device_class: problem
+        delay_on:
+          minutes: 5
+        state: >
+          {{ not is_number(states('sensor.haierpi_compressor_fact'))
+             or states('binary_sensor.haierpi_defrost') not in ['on','off'] }}
