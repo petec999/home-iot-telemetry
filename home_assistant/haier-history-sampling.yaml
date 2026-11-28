@@ -1,0 +1,28 @@
+template:
+  - trigger:
+      - platform: time_pattern
+        seconds: '/30'
+      - platform: homeassistant
+        event: start
+    sensor:
+      - name: Haier History TWO
+        unique_id: haier_history_two
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        availability: "{{ is_number(states('sensor.haierpi_two')) }}"
+        state: "{{ states('sensor.haierpi_two') | float(0) | round(1) }}"
+      - name: Haier History TWI
+        unique_id: haier_history_twi
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        availability: "{{ is_number(states('sensor.haierpi_twi')) }}"
+        state: "{{ states('sensor.haierpi_twi') | float(0) | round(1) }}"
+      - name: Haier History TAO
+        unique_id: haier_history_tao
+        device_class: temperature
+        state_class: measurement
+        unit_of_measurement: "°C"
+        availability: "{{ is_number(states('sensor.haierpi_tao')) }}"
+        state: "{{ states('sensor.haierpi_tao') | float(0) | round(1) }}"
