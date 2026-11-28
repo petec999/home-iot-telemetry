@@ -101,35 +101,3 @@ sensor:
     end: "{{ now() }}"
     duration:
       hours: 168
-  - platform: history_stats
-    name: ha_heat_termet_24h_hours
-    entity_id: switch.zasilanie_piec_gaz_socket_1
-    state: "on"
-    type: time
-    end: "{{ now() }}"
-    duration:
-      hours: 24
-  - platform: history_stats
-    name: ha_heat_termet_24h_count
-    entity_id: switch.zasilanie_piec_gaz_socket_1
-    state: "on"
-    type: count
-    end: "{{ now() }}"
-    duration:
-      hours: 24
-  - platform: history_stats
-    name: ha_heat_termet_7d_hours
-    entity_id: switch.zasilanie_piec_gaz_socket_1
-    state: "on"
-    type: time
-    end: "{{ now() }}"
-    duration:
-      hours: 168
-  - platform: history_stats
-    name: ha_heat_termet_7d_count
-    entity_id: switch.zasilanie_piec_gaz_socket_1
-    state: "on"
-    type: count
-    end: "{{ now() }}"
-    duration:
-      hours: 168
