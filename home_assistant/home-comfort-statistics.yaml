@@ -1,0 +1,83 @@
+template:
+  - binary_sensor:
+      - name: HA Heat Comfort In Range
+        unique_id: ha_heat_comfort_in_range
+        availability: "{{ is_number(states('sensor.temperature_and_humidity_sensor_5_temperatura')) }}"
+        state: "{{ 20 <= states('sensor.temperature_and_humidity_sensor_5_temperatura') | float(0) <= 22 }}"
+      - name: HA Heat Comfort Below
+        unique_id: ha_heat_comfort_below
+        availability: "{{ is_number(states('sensor.temperature_and_humidity_sensor_5_temperatura')) }}"
+        state: "{{ states('sensor.temperature_and_humidity_sensor_5_temperatura') | float(0) < 20 }}"
+      - name: HA Heat Comfort Above
+        unique_id: ha_heat_comfort_above
+        availability: "{{ is_number(states('sensor.temperature_and_humidity_sensor_5_temperatura')) }}"
+        state: "{{ states('sensor.temperature_and_humidity_sensor_5_temperatura') | float(0) > 22 }}"
+      - name: HA Heat Telemetry Missing
+        unique_id: ha_heat_telemetry_missing
+        device_class: problem
+        state: "{{ not is_number(states('sensor.haierpi_compressor_fact')) or states('binary_sensor.haierpi_defrost') not in ['on','off'] }}"
+sensor:
+  - platform: history_stats
+    name: ha_heat_comfort_in_range_24h_percent
+    entity_id: binary_sensor.ha_heat_comfort_in_range
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_comfort_in_range_168h_percent
+    entity_id: binary_sensor.ha_heat_comfort_in_range
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_comfort_below_24h_percent
+    entity_id: binary_sensor.ha_heat_comfort_below
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_comfort_below_168h_percent
+    entity_id: binary_sensor.ha_heat_comfort_below
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_comfort_above_24h_percent
+    entity_id: binary_sensor.ha_heat_comfort_above
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_comfort_above_168h_percent
+    entity_id: binary_sensor.ha_heat_comfort_above
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_telemetry_missing_24h_percent
+    entity_id: binary_sensor.ha_heat_telemetry_missing
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_telemetry_missing_168h_percent
+    entity_id: binary_sensor.ha_heat_telemetry_missing
+    state: "on"
+    type: ratio
+    end: "{{ now() }}"
+    duration:
+      hours: 168
