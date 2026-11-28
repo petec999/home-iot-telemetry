@@ -1,0 +1,17 @@
+name: Home Assistant home organizer
+on:
+  push:
+    paths:
+      - 'home_assistant/organize-home-dashboard.py'
+      - '.github/workflows/ha-home-organizer.yml'
+  workflow_dispatch:
+jobs:
+  organizer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile home_assistant/organize-home-dashboard.py
+      - run: python home_assistant/organize-home-dashboard.py --self-test
