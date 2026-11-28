@@ -70,6 +70,32 @@ def cycle_details(rows, start, end, kind):
     return {"complete_runs_minutes":stats(runs),"complete_stops_minutes":stats(stops),"runs_under_5min":sum(v<5 for v in runs),"runs_under_10min":sum(v<10 for v in runs)}
 
 
+
+def transitions(rows,start,end,kind):
+    prev=None
+    events=[]
+    for row in sorted(rows,key=lambda r:r["last_changed"]):
+        t=datetime.fromisoformat(row["last_changed"].replace("Z","+00:00"))
+        if t>=end:
+            break
+        new=active(row["state"],kind)
+        if t>start and new!=prev:
+            events.append((t,prev,new))
+        prev=new
+    return events
+
+def correlation(indexed,start,end):
+    comp=transitions(indexed.get("sensor.haierpi_compressor_fact",[]),start,end,"frequency")
+    frost=transitions(indexed.get("binary_sensor.haierpi_defrost",[]),start,end,"binary")
+    stops=[t for t,a,b in comp if a is True and b is False]
+    edges=[t for t,a,b in frost if a is not None and b is not None]
+    return {"observed_compressor_stops":len(stops),
+            "stops_with_defrost_transition_within_5min":sum(any(abs((t-f).total_seconds())<=300 for f in edges) for t in stops),
+            "compressor_transitions_to_unknown":sum(a is not None and b is None for t,a,b in comp),
+            "compressor_active_interrupted_by_unknown":sum(a is True and b is None for t,a,b in comp),
+            "defrost_transitions_to_unknown":sum(a is not None and b is None for t,a,b in frost)}
+
+
 def main():
     import sys
     if "--self-test" in sys.argv:
@@ -85,18 +111,20 @@ def main():
         raise SystemExit("Missing HA API token")
     base="http://supervisor/core" if os.environ.get("SUPERVISOR_TOKEN") else os.environ.get("HA_API_URL","http://homeassistant:8123")
     end=datetime.now(timezone.utc)
-    start=end-timedelta(hours=24)
+    hours=168 if "--week" in sys.argv else 24
+    start=end-timedelta(hours=hours)
     from urllib.parse import urlencode
     url=base+"/api/history/period/"+start.isoformat()+"?"+urlencode({"filter_entity_id":",".join(ENTITIES),"end_time":end.isoformat()})
     req=urllib.request.Request(url,headers={"Authorization":"Bearer "+token})
     with urllib.request.urlopen(req,timeout=60) as response:
         groups=json.load(response)
     indexed={g[0]["entity_id"]:g for g in groups if g}
-    print("Ostatnie 24 h; czasy i cykle obserwowane, nie estymowane.")
+    print(f"Raport V3: ostatnie {hours} h; czasy i cykle obserwowane.")
     for entity,(name,kind) in ENTITIES.items():
         result=summarize(indexed.get(entity,[]),start,end,kind)
         print(name+": "+json.dumps(result,ensure_ascii=False))
         print("  Pelne cykle: "+json.dumps(cycle_details(indexed.get(entity,[]),start,end,kind),ensure_ascii=False))
+    print("Korelacja czasowa (nie dowod przyczyny): "+json.dumps(correlation(indexed,start,end)))
     print("Przekazniki nie potwierdzaja przeplywu ani pracy palnika. Pokrycie oznacza znany stan w historii, nie swiezosc probek.")
 
 if __name__=="__main__":
