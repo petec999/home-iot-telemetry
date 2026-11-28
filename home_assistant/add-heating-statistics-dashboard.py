@@ -368,7 +368,6 @@ REPORT_ENTITIES=[
  ("sensor.haierpi_compressor_fact","Sprężarka","compressor"),
  ("binary_sensor.haierpi_defrost","Odszranianie","defrost"),
  ("switch.thr316d_ds18b20_on_off_switch","Cyrkulacja – przekaźnik","circulation"),
- ("switch.zasilanie_piec_gaz_socket_1","Termet – zasilanie","termet"),
 ]
 def transform(config,states,registry,base="lovelace"):
     out=copy.deepcopy(config)
@@ -391,7 +390,7 @@ def selftest():
     c={"views":[{"path":DIAG,"cards":[]}]}
     s=[{"entity_id":f"sensor.ha_heat_{key}_{period}_{metric}"} for _,_,key in REPORT_ENTITIES for period in ("24h","7d") for metric in ("hours","count")]
     out,_=transform(c,s,[])
-    assert len(out["views"][0]["cards"])==5
+    assert len(out["views"][0]["cards"])==4
     assert transform(out,s,[])[0]==out
     assert not c["views"][0]["cards"]
     print("SELFTEST OK")
