@@ -20,8 +20,8 @@ while cursor<end:
         while i<len(events) and events[i][0]<=t:
             _,k,v=events[i]; state[k]=v; i+=1
         try:
-            mode=state["mode"]; relay=float(state["relay"]); fact=float(state["fact"]); fset=float(state["fset"])
-            valid=mode in ("eco","quiet","turbo") and relay in (0,1) and 0<fact<200 and 0<fset<200 and state["defrost"]=="off"
+            mode=state["mode"]; relay={"on":1,"off":0}[state["enabled"]]; fact=float(state["fact"]); fset=float(state["fset"])
+            valid=mode in ("eco","quiet","turbo") and relay in (0,1) and 0<fact<200 and 0<fset<200 and state["defrost"]=="off" and state["enabled"]==state.get("switch")
         except (KeyError,ValueError,TypeError): valid=False
         if valid:
             key=(mode,int(relay))
@@ -29,7 +29,7 @@ while cursor<end:
             stable+=1
             if stable>15:
                 stats[key][fact]+=1; requested[key][fset]+=1
-                ind=(int(relay),state.get("enabled","unknown"),state.get("switch","unknown"))
+                ind=(state.get("relay","unknown"),state.get("enabled","unknown"),state.get("switch","unknown"))
                 indicators[ind]+=1
                 if fact>=60: high[(mode,fact)+ind]+=1
                 try:
