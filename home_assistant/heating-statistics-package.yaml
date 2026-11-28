@@ -1,0 +1,135 @@
+template:
+  - binary_sensor:
+      - name: HA Heat Compressor Active
+        unique_id: ha_heat_compressor_active
+        availability: "{{ is_number(states('sensor.haierpi_compressor_fact')) }}"
+        state: "{{ states('sensor.haierpi_compressor_fact') | float(0) > 0 }}"
+sensor:
+  - platform: history_stats
+    name: ha_heat_compressor_24h_hours
+    entity_id: binary_sensor.ha_heat_compressor_active
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_compressor_24h_count
+    entity_id: binary_sensor.ha_heat_compressor_active
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_compressor_7d_hours
+    entity_id: binary_sensor.ha_heat_compressor_active
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_compressor_7d_count
+    entity_id: binary_sensor.ha_heat_compressor_active
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_defrost_24h_hours
+    entity_id: binary_sensor.haierpi_defrost
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_defrost_24h_count
+    entity_id: binary_sensor.haierpi_defrost
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_defrost_7d_hours
+    entity_id: binary_sensor.haierpi_defrost
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_defrost_7d_count
+    entity_id: binary_sensor.haierpi_defrost
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_circulation_24h_hours
+    entity_id: switch.thr316d_ds18b20_on_off_switch
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_circulation_24h_count
+    entity_id: switch.thr316d_ds18b20_on_off_switch
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_circulation_7d_hours
+    entity_id: switch.thr316d_ds18b20_on_off_switch
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_circulation_7d_count
+    entity_id: switch.thr316d_ds18b20_on_off_switch
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_termet_24h_hours
+    entity_id: switch.zasilanie_piec_gaz_socket_1
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_termet_24h_count
+    entity_id: switch.zasilanie_piec_gaz_socket_1
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+  - platform: history_stats
+    name: ha_heat_termet_7d_hours
+    entity_id: switch.zasilanie_piec_gaz_socket_1
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 168
+  - platform: history_stats
+    name: ha_heat_termet_7d_count
+    entity_id: switch.zasilanie_piec_gaz_socket_1
+    state: "on"
+    type: count
+    end: "{{ now() }}"
+    duration:
+      hours: 168
