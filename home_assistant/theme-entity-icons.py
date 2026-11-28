@@ -121,13 +121,22 @@ def icon_for(entity, attrs, registry):
     if entity in EXACT:
         return "mdi:"+EXACT[entity]
     name = normalize(key+" "+str(attrs.get("friendly_name","")))
+    # Device class is authoritative for measured quantities; name-based
+    # refinement is restricted to compatible icons. Combined device names
+    # (e.g. temperature_and_humidity_sensor) must not mislabel humidity.
+    compatible={
+        "temperature":{"thermometer","thermometer-lines","water-thermometer","home-thermometer","snowflake-melt"},
+        "power":{"flash","fire"},"energy":{"lightning-bolt","fire"},
+        "duration":{"timer-outline"},
+    }
+    if dc in CLASSES:
+        for pattern,icon in RULES:
+            if icon in compatible.get(dc,set()) and re.search(pattern,name):
+                return "mdi:"+icon
+        return "mdi:"+CLASSES[dc]
     for pattern, icon in RULES:
         if re.search(pattern,name):
-            # Avoid classifying a temperature by equipment name, or a switch
-            # as a sensor just because its name includes a measurement.
             return "mdi:"+icon
-    if dc in CLASSES:
-        return "mdi:"+CLASSES[dc]
     if domain in DOMAINS:
         return "mdi:"+DOMAINS[domain]
     return None
@@ -215,6 +224,7 @@ def selftest():
     assert cards[0]["icon"]=="mdi:flash" and cards[1:]==original["views"][1]["sections"][0]["cards"][0]["cards"][1:]
     assert transform(out,live,[])==(out,[])
     assert icon_for(e,{},{"icon":"mdi:star"}) is None
+    assert icon_for("sensor.temperature_and_humidity_sensor_5_wilgotnosc",{"device_class":"humidity"},{})=="mdi:water-percent"
     print("SELFTEST OK")
 
 def main():
