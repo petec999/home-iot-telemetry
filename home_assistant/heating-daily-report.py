@@ -47,12 +47,37 @@ def summarize(rows, start, end, kind):
             seconds += dt
     return {"starts_observed":starts,"active_minutes":round(seconds/60,1),"coverage_percent":round(100*known/(end-start).total_seconds(),1)}
 
+
+def cycle_details(rows, start, end, kind):
+    from statistics import mean, median
+    points = sorted((datetime.fromisoformat(r["last_changed"].replace("Z","+00:00")), active(r["state"],kind)) for r in rows)
+    state, began = None, None
+    runs, stops = [], []
+    for t, new in points:
+        if t <= start:
+            state, began = new, None
+            continue
+        if t >= end:
+            break
+        if new == state:
+            continue
+        if began is not None and new is not None and state is not None:
+            (runs if state else stops).append((t-began).total_seconds()/60)
+        began = t if state is not None and new is not None else None
+        state = new
+    def stats(values):
+        return {"count":len(values),"min":round(min(values),1),"mean":round(mean(values),1),"median":round(median(values),1),"max":round(max(values),1)} if values else {"count":0}
+    return {"complete_runs_minutes":stats(runs),"complete_stops_minutes":stats(stops),"runs_under_5min":sum(v<5 for v in runs),"runs_under_10min":sum(v<10 for v in runs)}
+
+
 def main():
     import sys
     if "--self-test" in sys.argv:
         start=datetime(2026,1,1,tzinfo=timezone.utc)
         rows=[{"last_changed":(start+timedelta(minutes=m)).isoformat(),"state":s} for m,s in [(0,"off"),(10,"on"),(30,"off"),(40,"unavailable")]]
         assert summarize(rows,start,start+timedelta(hours=1),"binary")=={"starts_observed":1,"active_minutes":20.0,"coverage_percent":66.7}
+        assert cycle_details(rows,start,start+timedelta(hours=1),"binary")["complete_runs_minutes"]["mean"] == 20.0
+        assert cycle_details(rows,start,start+timedelta(hours=1),"binary")["complete_stops_minutes"]["count"] == 0
         print("SELFTEST OK")
         return
     token=os.environ.get("SUPERVISOR_TOKEN") or os.environ.get("HA_TOKEN")
@@ -71,6 +96,7 @@ def main():
     for entity,(name,kind) in ENTITIES.items():
         result=summarize(indexed.get(entity,[]),start,end,kind)
         print(name+": "+json.dumps(result,ensure_ascii=False))
+        print("  Pelne cykle: "+json.dumps(cycle_details(indexed.get(entity,[]),start,end,kind),ensure_ascii=False))
     print("Przekazniki nie potwierdzaja przeplywu ani pracy palnika. Pokrycie oznacza znany stan w historii, nie swiezosc probek.")
 
 if __name__=="__main__":
