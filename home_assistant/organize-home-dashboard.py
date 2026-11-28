@@ -165,7 +165,9 @@ def transform(config,states,registry,base="lovelace"):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+",base):
         raise RuntimeError("Invalid dashboard URL path")
     views=config["views"]
-    paths=[v.get("path") for v in views if isinstance(v,dict)]
+    if not all(isinstance(v,dict) and isinstance(v.get("path"),str) and v["path"] for v in views):
+        raise RuntimeError("Every existing view needs an explicit path; refusing to shift implicit URLs")
+    paths=[v["path"] for v in views]
     if HOME in paths or DIAG in paths:
         if paths.count(HOME)==paths.count(DIAG)==1 and MARK in json.dumps(views[paths.index(HOME)],ensure_ascii=False):
             return copy.deepcopy(config),["Already organized; existing edits preserved."]
