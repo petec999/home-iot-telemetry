@@ -96,6 +96,34 @@ def correlation(indexed,start,end):
             "defrost_transitions_to_unknown":sum(a is not None and b is None for t,a,b in frost)}
 
 
+
+def gap_report(indexed,start,end):
+    from statistics import median
+    all_gaps={}
+    for entity,(_,kind) in ENTITIES.items():
+        events=transitions(indexed.get(entity,[]),start,end,kind)
+        opened=None
+        gaps=[]
+        for t,a,b in events:
+            if a is not None and b is None:
+                opened=t
+            elif b is not None and opened is not None:
+                gaps.append((opened,t,False))
+                opened=None
+        if opened is not None:
+            gaps.append((opened,end,True))
+        all_gaps[entity]=gaps
+        durations=[(b-a).total_seconds() for a,b,c in gaps if not c]
+        print(entity+": "+json.dumps({"gaps_started":len(gaps),"closed_gap_seconds_total":round(sum(durations),1),"median_seconds":round(median(durations),1) if durations else None,"max_seconds":round(max(durations),1) if durations else None}))
+    comp=all_gaps["sensor.haierpi_compressor_fact"]
+    frost=all_gaps["binary_sensor.haierpi_defrost"]
+    print("Przerwy sprezarki (UTC; wspolny zanik = poczatek odszraniania niedostepny w granicach 10 s):")
+    for a,b,c in comp:
+        shared=any(abs((a-x).total_seconds())<=10 for x,y,z in frost)
+        print(a.isoformat()+" -> "+b.isoformat()+" | "+str(round((b-a).total_seconds(),1))+" s | wspolny="+str(shared)+(" | nadal trwa" if c else ""))
+    print("Przerwy rozpoczęte przed oknem raportu nie sa liczone. Wspolny zanik nie identyfikuje przyczyny.")
+
+
 def main():
     import sys
     if "--self-test" in sys.argv:
@@ -119,12 +147,14 @@ def main():
     with urllib.request.urlopen(req,timeout=60) as response:
         groups=json.load(response)
     indexed={g[0]["entity_id"]:g for g in groups if g}
-    print(f"Raport V3: ostatnie {hours} h; czasy i cykle obserwowane.")
+    print(f"Raport V4: ostatnie {hours} h; czasy i cykle obserwowane.")
     for entity,(name,kind) in ENTITIES.items():
         result=summarize(indexed.get(entity,[]),start,end,kind)
         print(name+": "+json.dumps(result,ensure_ascii=False))
         print("  Pelne cykle: "+json.dumps(cycle_details(indexed.get(entity,[]),start,end,kind),ensure_ascii=False))
     print("Korelacja czasowa (nie dowod przyczyny): "+json.dumps(correlation(indexed,start,end)))
+    if "--gaps" in sys.argv:
+        gap_report(indexed,start,end)
     print("Przekazniki nie potwierdzaja przeplywu ani pracy palnika. Pokrycie oznacza znany stan w historii, nie swiezosc probek.")
 
 if __name__=="__main__":
